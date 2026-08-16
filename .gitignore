@@ -1,0 +1,25 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Regenerated per-build by scripts/write-build-info.mjs
+public/build-info.json
+
+# Sensitive credentials — never commit
+.env
+.env.local
+.env.*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.claude/
+.idea
+.DS_Store
+.vercel

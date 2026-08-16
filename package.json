@@ -1,0 +1,26 @@
+{
+  "name": "my-ledger",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node brand-kit/scripts/write-build-info.mjs && vite",
+    "build": "node brand-kit/scripts/write-build-info.mjs && vite build",
+    "preview": "vite preview",
+    "brand:fonts": "node brand-kit/scripts/download-fonts.mjs",
+    "brand:icons": "node brand-kit/scripts/generate-brand-icons.mjs",
+    "brand:sync": "git submodule update --remote brand-kit && git add brand-kit && git commit -m \"Bump claudeborne-brand-kit\""
+  },
+  "dependencies": {
+    "firebase": "^12.13.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.10",
+    "vite-plugin-pwa": "^1.3.0",
+    "vite-plugin-static-copy": "^3.4.0"
+  }
+}
