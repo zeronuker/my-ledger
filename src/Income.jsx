@@ -1,57 +1,124 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { doc, setDoc } from 'firebase/firestore'
+import { db } from './firebase'
 import { useCollection } from './useCollection'
 
-function currentMonth() {
-  return new Date().toISOString().slice(0, 7) // YYYY-MM
+function currentMonth() { return new Date().toISOString().slice(0, 7) }
+function monthLabel(monthStr) {
+  const [y, m] = monthStr.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })
 }
+function addMonths(monthStr, n) {
+  const [y, m] = monthStr.split('-').map(Number)
+  const d = new Date(y, m - 1 + n, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+const sum = (rows) => rows.reduce((s, r) => s + Number(r.amount || 0), 0)
+const netOf = (doc) => sum(doc.earnings || []) - sum(doc.deductions || [])
 
-const EMPTY = { month: currentMonth(), component: '', amount: '', currency: 'MYR' }
+const EMPTY_DOC = { earnings: [], deductions: [], currency: 'MYR' }
 
 export default function Income({ uid }) {
-  const { items, loading, add, remove } = useCollection(uid, 'income', 'month')
-  const [form, setForm] = useState(EMPTY)
+  const { items, loading } = useCollection(uid, 'income', 'month')
+  const [month, setMonth] = useState(currentMonth())
+  const [draft, setDraft] = useState(EMPTY_DOC)
+  const loadedMonth = useRef(null)
 
-  function submit(e) {
-    e.preventDefault()
-    if (!form.component || !form.amount) return
-    add({ ...form, amount: Number(form.amount) })
-    setForm({ ...EMPTY, month: form.month })
+  // Load the selected month's doc into an editable draft, but only when the
+  // month actually changes — not on every Firestore snapshot — so typing
+  // isn't clobbered by our own writes echoing back.
+  useEffect(() => {
+    if (loading) return
+    if (loadedMonth.current === month) return
+    const existing = items.find((i) => i.month === month)
+    setDraft(existing ? { earnings: existing.earnings || [], deductions: existing.deductions || [], currency: existing.currency || 'MYR' } : EMPTY_DOC)
+    loadedMonth.current = month
+  }, [month, loading, items])
+
+  function save(next) {
+    setDraft(next)
+    setDoc(doc(db, 'users', uid, 'income', month), { month, ...next }, { merge: false })
   }
+
+  const year = month.slice(0, 4)
+  const ytdNet = items
+    .filter((i) => i.month.startsWith(year) && i.month <= month)
+    .reduce((s, i) => s + netOf(i), 0)
+
+  const gross = sum(draft.earnings)
+  const totalDeductions = sum(draft.deductions)
+  const net = gross - totalDeductions
 
   return (
     <section>
       <h2 className="section-title">Income</h2>
 
-      <form onSubmit={submit} className="row-form">
-        <input type="month" value={form.month}
-          onChange={(e) => setForm({ ...form, month: e.target.value })} />
-        <input placeholder="Component (e.g. Salary, Bonus)" value={form.component}
-          onChange={(e) => setForm({ ...form, component: e.target.value })} required />
-        <input type="number" step="0.01" placeholder="Amount" value={form.amount}
-          onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
-        <input placeholder="Currency" value={form.currency} style={{ width: 64 }}
-          onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })} />
-        <button type="submit" className="cb-btn cb-btn--primary">ADD</button>
-      </form>
+      <div className="income-head">
+        <div className="seg">
+          <button onClick={() => setMonth(addMonths(month, -1))}>&larr;</button>
+          <button className="on">{monthLabel(month)}</button>
+          <button onClick={() => setMonth(addMonths(month, 1))}>&rarr;</button>
+        </div>
+        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+      </div>
 
       {loading ? <p className="dim">Loading…</p> : (
-        <table className="ledger-table">
-          <thead>
-            <tr><th>Month</th><th>Component</th><th>Amount</th><th /></tr>
-          </thead>
-          <tbody>
-            {items.map((it) => (
-              <tr key={it.id}>
-                <td>{it.month}</td>
-                <td>{it.component}</td>
-                <td className="cb-mono">{it.currency} {Number(it.amount).toFixed(2)}</td>
-                <td><button className="cb-btn cb-btn--danger" onClick={() => remove(it.id)}>×</button></td>
-              </tr>
-            ))}
-            {items.length === 0 && <tr><td colSpan={4} className="dim">No income entries yet.</td></tr>}
-          </tbody>
-        </table>
+        <div className="income-stmt">
+          <IncomeSection
+            label="Earnings" rows={draft.earnings} currency={draft.currency}
+            onChange={(rows) => save({ ...draft, earnings: rows })}
+          />
+          <div className="income-calc"><span className="label">Gross salary</span><span className="amt">{draft.currency} {gross.toFixed(2)}</span></div>
+
+          <IncomeSection
+            label="Deductions" rows={draft.deductions} currency={draft.currency}
+            onChange={(rows) => save({ ...draft, deductions: rows })}
+          />
+          <div className="income-calc"><span className="label">Total deductions</span><span className="amt">{draft.currency} {totalDeductions.toFixed(2)}</span></div>
+
+          <div className="income-calc net"><span className="label">Net salary</span><span className="amt">{draft.currency} {net.toFixed(2)}</span></div>
+          <div className="income-ytd">YTD net (Jan&ndash;{monthLabel(month).split(' ')[0]}): {draft.currency} {ytdNet.toFixed(2)}</div>
+        </div>
       )}
     </section>
+  )
+}
+
+function IncomeSection({ label, rows, currency, onChange }) {
+  const [newLabel, setNewLabel] = useState('')
+
+  function updateRow(i, patch) {
+    onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
+  }
+  function removeRow(i) {
+    onChange(rows.filter((_, idx) => idx !== i))
+  }
+  function addRow(e) {
+    e.preventDefault()
+    if (!newLabel.trim()) return
+    onChange([...rows, { label: newLabel.trim(), amount: 0 }])
+    setNewLabel('')
+  }
+
+  return (
+    <>
+      <div className="income-section-label">{label}</div>
+      {rows.map((r, i) => (
+        <div key={i} className="income-row">
+          <input value={r.label} onChange={(e) => updateRow(i, { label: e.target.value })}
+            style={{ flex: 1, marginRight: 8 }} />
+          <span className="cb-mono" style={{ marginRight: 4 }}>{currency}</span>
+          <input type="number" step="0.01" value={r.amount}
+            onChange={(e) => updateRow(i, { amount: Number(e.target.value) })}
+            style={{ width: 110, textAlign: 'right' }} />
+          <button className="cb-btn cb-btn--danger" onClick={() => removeRow(i)}>×</button>
+        </div>
+      ))}
+      <form onSubmit={addRow} className="income-row add-row" style={{ display: 'flex', gap: 8 }}>
+        <input placeholder={`Add ${label.toLowerCase()} row`} value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)} style={{ flex: 1 }} />
+        <button type="submit" className="cb-btn">ADD</button>
+      </form>
+    </>
   )
 }

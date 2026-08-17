@@ -24,8 +24,13 @@ export default function Dashboard({ uid }) {
 
   const month = currentMonth()
   const monthExpenses = expenses.filter((e) => e.date?.startsWith(month))
-  const monthIncome = income.filter((i) => i.month === month)
+  const monthIncomeDoc = income.find((i) => i.month === month)
   const monthCardTxns = cardTxns.filter((t) => t.date?.startsWith(month))
+
+  const netIncome = monthIncomeDoc
+    ? (monthIncomeDoc.earnings || []).reduce((s, r) => s + Number(r.amount), 0)
+      - (monthIncomeDoc.deductions || []).reduce((s, r) => s + Number(r.amount), 0)
+    : 0
 
   const unpaidExpenses = monthExpenses.filter((e) => !e.paid)
   const unpaidCardBalance = cardTxns.filter((t) => remainingOf(t) > 0) // all-time, not just this month
@@ -43,8 +48,10 @@ export default function Dashboard({ uid }) {
 
       <div className="stat-grid">
         <div className="stat-tile">
-          <div className="cb-eyebrow">Income this month</div>
-          <div className="stat-value">{sumByCurrency(monthIncome)}</div>
+          <div className="cb-eyebrow">Net income this month</div>
+          <div className="stat-value">
+            {monthIncomeDoc ? `${monthIncomeDoc.currency} ${netIncome.toFixed(2)}` : '—'}
+          </div>
         </div>
         <div className="stat-tile">
           <div className="cb-eyebrow">Expenses this month</div>
