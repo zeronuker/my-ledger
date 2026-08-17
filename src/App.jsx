@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
-import { onAuthStateChanged, signOut } from 'firebase/auth'
+import { onAuthStateChanged } from 'firebase/auth'
 import { auth, firebaseReady } from './firebase'
+import { useSettings } from './useSettings'
+import { makeThemeCss } from './theme'
 import Auth from './Auth.jsx'
+import Settings from './Settings.jsx'
 import Dashboard from './Dashboard.jsx'
 import Expenses from './Expenses.jsx'
 import CreditCards from './CreditCards.jsx'
 import Income from './Income.jsx'
+import BrandBanner from '@brand/BrandBanner'
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -17,6 +21,8 @@ const TABS = [
 export default function App() {
   const [user, setUser] = useState(undefined) // undefined = loading, null = signed out
   const [tab, setTab] = useState('dashboard')
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const { settings, update } = useSettings(user?.uid)
 
   useEffect(() => {
     if (firebaseReady) return onAuthStateChanged(auth, setUser)
@@ -43,33 +49,37 @@ export default function App() {
   if (!user) return <Auth />
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <span className="cb-logo">
-          <span className="cb-logo__mark" aria-hidden="true" />
-          <span className="cb-logo__wordmark">LEDGER</span>
-        </span>
-        <button className="cb-btn" onClick={() => signOut(auth)}>SIGN OUT</button>
-      </header>
+    <>
+      <style>{makeThemeCss(settings)}</style>
+      <div className="app-shell">
+        <header className="app-header">
+          <BrandBanner subtitle="LEDGER" />
+          <button className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>⚙</button>
+        </header>
 
-      <nav className="app-tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={`app-tab${tab === t.id ? ' app-tab--active' : ''}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+        <nav className="app-tabs">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className={`app-tab${tab === t.id ? ' app-tab--active' : ''}`}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
 
-      <main className="app-main">
-        {tab === 'dashboard' && <Dashboard uid={user.uid} />}
-        {tab === 'expenses' && <Expenses uid={user.uid} />}
-        {tab === 'cards' && <CreditCards uid={user.uid} />}
-        {tab === 'income' && <Income uid={user.uid} />}
-      </main>
-    </div>
+        <main className="app-main">
+          {tab === 'dashboard' && <Dashboard uid={user.uid} />}
+          {tab === 'expenses' && <Expenses uid={user.uid} />}
+          {tab === 'cards' && <CreditCards uid={user.uid} />}
+          {tab === 'income' && <Income uid={user.uid} />}
+        </main>
+      </div>
+
+      {settingsOpen && (
+        <Settings uid={user.uid} settings={settings} update={update} onClose={() => setSettingsOpen(false)} />
+      )}
+    </>
   )
 }
