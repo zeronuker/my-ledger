@@ -14,7 +14,7 @@ function sumByCurrency(rows) {
 
 export default function Dashboard({ uid }) {
   const { items: expenses } = useCollection(uid, 'expenses')
-  const { items: income } = useCollection(uid, 'income')
+  const { items: income } = useCollection(uid, 'income', 'month')
   const { items: cardTxns } = useCollection(uid, 'cardTransactions')
 
   const month = currentMonth()

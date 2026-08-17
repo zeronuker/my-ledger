@@ -53,7 +53,7 @@ export default function CreditCards({ uid }) {
       {card && (
         <CardLedger
           card={card} items={txns} loading={loading}
-          onAdd={(data) => addTxn({ ...data, cardId: card.id })}
+          onAdd={(data) => addTxn({ ...data, cardId: card.id, currency: card.currency })}
           onUpdate={update} onRemove={removeTxn}
         />
       )}
