@@ -11,6 +11,14 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-const app = initializeApp(firebaseConfig)
-export const db = getFirestore(app)
-export const auth = getAuth(app)
+export const firebaseReady = Boolean(firebaseConfig.apiKey)
+
+// .env.local isn't filled in yet during local preview — skip init rather than
+// crash on invalid-api-key, so the UI shell is still viewable.
+let app, db, auth
+if (firebaseReady) {
+  app = initializeApp(firebaseConfig)
+  db = getFirestore(app)
+  auth = getAuth(app)
+}
+export { db, auth }
