@@ -157,6 +157,55 @@ input:focus { outline: 1px solid var(--cb-mint); }
 .section-title {
   font-family: var(--cb-font-display); font-weight: 700; letter-spacing: 0.02em; margin: 0 0 16px;
 }
+.section-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px;
+}
+.section-head .section-title { margin: 0; }
+
+select {
+  background: var(--cb-surface-2);
+  border: 1px solid var(--cb-line-2);
+  border-radius: var(--cb-radius-sm);
+  color: var(--cb-ink);
+  padding: 10px 12px;
+  font-family: var(--cb-font-body);
+  font-size: 14px;
+}
+
+/* ---- Expense grid ---- */
+.range-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+.range-chip {
+  font-family: var(--cb-font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--cb-ink-dim);
+  background: none; border: 1px solid var(--cb-line-2); border-radius: 4px; padding: 5px 10px; cursor: pointer;
+}
+.range-chip.on { color: var(--cb-mint); border-color: var(--cb-mint); }
+.grid-wrap { overflow-x: auto; border: 1px solid var(--cb-line); border-radius: var(--cb-radius-md); }
+.grid-table { border-collapse: collapse; width: 100%; min-width: 640px; font-family: var(--cb-font-mono); font-size: 12px; }
+.grid-table th, .grid-table td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--cb-line); white-space: nowrap; }
+.grid-table th {
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cb-ink-dim);
+  font-weight: 700; background: var(--cb-surface-1);
+}
+.grid-table td:first-child, .grid-table th:first-child { text-align: left; position: sticky; left: 0; background: var(--cb-surface-1); }
+.grid-row-cat { padding-left: 22px !important; color: var(--cb-ink-2); }
+.grid-group-row td {
+  background: var(--cb-surface-2); font-weight: 700; color: var(--cb-ink); text-align: left;
+  letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px;
+}
+.grid-total-row td { background: var(--cb-surface-2); font-weight: 700; color: var(--cb-ink); border-top: 2px solid var(--cb-line-2); }
+.grid-table .col-total { color: var(--cb-ink); font-weight: 700; }
+.grid-table .col-avg { color: var(--cb-ink-dim); }
+
+/* ---- Category manager (Settings > Preferences) ---- */
+.cat-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.cat-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--cb-surface-2); border: 1px solid var(--cb-line-2); border-radius: 999px;
+  padding: 5px 10px; font-size: 11px; color: var(--cb-ink-2);
+}
+.cat-pill-group { color: var(--cb-ink-dim); }
+.cat-pill-x { color: var(--cb-ink-dim); cursor: pointer; }
+.cat-pill-x:hover { color: #ff6b6b; }
 
 /* ---- Credit cards ---- */
 .card-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }

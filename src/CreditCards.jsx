@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import { useCollection } from './useCollection'
+import { useCategories } from './useCategories'
+import { DEFAULT_CARD_CATEGORIES } from './categories'
 
 function today() {
   return new Date().toISOString().slice(0, 10)
 }
 
-const EMPTY_TXN = { description: '', category: '', amount: '', date: today(), paid: false }
+const EMPTY_TXN = { description: '', categoryId: '', amount: '', date: today(), paid: false }
 
 export default function CreditCards({ uid }) {
   const { items: cards, add: addCard, remove: removeCard } = useCollection(uid, 'cards', 'name')
+  const { items: categories } = useCategories(uid, 'cardCategories', DEFAULT_CARD_CATEGORIES)
   const { items: allTxns, loading, add: addTxn, update, remove: removeTxn } = useCollection(uid, 'cardTransactions')
   const [selected, setSelected] = useState(null)
   const [newCard, setNewCard] = useState({ name: '', currency: 'MYR' })
@@ -52,7 +55,7 @@ export default function CreditCards({ uid }) {
 
       {card && (
         <CardLedger
-          card={card} items={txns} loading={loading}
+          card={card} items={txns} loading={loading} categories={categories}
           onAdd={(data) => addTxn({ ...data, cardId: card.id, currency: card.currency })}
           onUpdate={update} onRemove={removeTxn}
         />
@@ -61,8 +64,9 @@ export default function CreditCards({ uid }) {
   )
 }
 
-function CardLedger({ card, items, loading, onAdd, onUpdate, onRemove }) {
+function CardLedger({ card, items, loading, categories, onAdd, onUpdate, onRemove }) {
   const [form, setForm] = useState(EMPTY_TXN)
+  const catById = Object.fromEntries(categories.map((c) => [c.id, c]))
 
   const unpaidTotal = items.filter((t) => !t.paid).reduce((s, t) => s + Number(t.amount), 0)
 
@@ -83,8 +87,10 @@ function CardLedger({ card, items, loading, onAdd, onUpdate, onRemove }) {
       <form onSubmit={submit} className="row-form">
         <input placeholder="Description" value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })} required />
-        <input placeholder="Category" value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value })} />
+        <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}>
+          <option value="">No category</option>
+          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
         <input type="number" step="0.01" placeholder="Amount" value={form.amount}
           onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
         <input type="date" value={form.date}
@@ -106,7 +112,7 @@ function CardLedger({ card, items, loading, onAdd, onUpdate, onRemove }) {
                 </td>
                 <td>{t.date}</td>
                 <td>{t.description}</td>
-                <td>{t.category}</td>
+                <td>{catById[t.categoryId]?.name || '—'}</td>
                 <td className="cb-mono">{card.currency} {Number(t.amount).toFixed(2)}</td>
                 <td><button className="cb-btn cb-btn--danger" onClick={() => onRemove(t.id)}>×</button></td>
               </tr>

@@ -1,4 +1,6 @@
 import { useCollection } from './useCollection'
+import { useCategories } from './useCategories'
+import { DEFAULT_EXPENSE_CATEGORIES } from './categories'
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7)
@@ -16,6 +18,8 @@ export default function Dashboard({ uid }) {
   const { items: expenses } = useCollection(uid, 'expenses')
   const { items: income } = useCollection(uid, 'income', 'month')
   const { items: cardTxns } = useCollection(uid, 'cardTransactions')
+  const { items: categories } = useCategories(uid, 'expenseCategories', DEFAULT_EXPENSE_CATEGORIES)
+  const catById = Object.fromEntries(categories.map((c) => [c.id, c]))
 
   const month = currentMonth()
   const monthExpenses = expenses.filter((e) => e.date?.startsWith(month))
@@ -27,7 +31,7 @@ export default function Dashboard({ uid }) {
 
   const byCategory = {}
   for (const e of monthExpenses) {
-    const key = e.category || 'Uncategorized'
+    const key = catById[e.categoryId]?.name || 'Uncategorized'
     byCategory[key] = (byCategory[key] || 0) + Number(e.amount)
   }
   const maxCategory = Math.max(1, ...Object.values(byCategory))

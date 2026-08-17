@@ -6,8 +6,10 @@ import {
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import { ACCENT_PRESETS, FONT_CHOICES } from './theme'
+import { useCategories } from './useCategories'
+import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_CARD_CATEGORIES } from './categories'
 
-const TABS = ['Appearance', 'Account', 'About']
+const TABS = ['Appearance', 'Preferences', 'Account', 'About']
 const APP_VERSION = '0.1.0'
 
 export default function Settings({ uid, settings, update, onClose }) {
@@ -27,6 +29,7 @@ export default function Settings({ uid, settings, update, onClose }) {
         </div>
         <div className="modal-body">
           {tab === 'Appearance' && <AppearanceTab settings={settings} update={update} />}
+          {tab === 'Preferences' && <PreferencesTab uid={uid} />}
           {tab === 'Account' && <AccountTab uid={uid} onClose={onClose} />}
           {tab === 'About' && <AboutTab />}
         </div>
@@ -92,6 +95,62 @@ function AppearanceTab({ settings, update }) {
         </div>
       </div>
     </>
+  )
+}
+
+function PreferencesTab({ uid }) {
+  const expense = useCategories(uid, 'expenseCategories', DEFAULT_EXPENSE_CATEGORIES)
+  const card = useCategories(uid, 'cardCategories', DEFAULT_CARD_CATEGORIES)
+
+  return (
+    <>
+      <CategoryList
+        label="Expense categories"
+        hint="Grouped in the Expenses grid (e.g. Loans, Utilities & Fees)."
+        items={expense.items} onAdd={expense.add} onRemove={expense.remove}
+        withGroup
+      />
+      <CategoryList
+        label="Credit card categories"
+        items={card.items} onAdd={card.add} onRemove={card.remove}
+      />
+    </>
+  )
+}
+
+function CategoryList({ label, hint, items, onAdd, onRemove, withGroup }) {
+  const [name, setName] = useState('')
+  const [group, setGroup] = useState('')
+
+  function submit(e) {
+    e.preventDefault()
+    if (!name.trim()) return
+    onAdd(withGroup ? { name: name.trim(), group: group.trim() || null } : { name: name.trim() })
+    setName('')
+    setGroup('')
+  }
+
+  return (
+    <div className="setting-row">
+      <span className="setting-label">{label}</span>
+      <div className="cat-list">
+        {items.map((c) => (
+          <span key={c.id} className="cat-pill">
+            {c.name}{withGroup && c.group ? <span className="cat-pill-group"> · {c.group}</span> : ''}
+            <span className="cat-pill-x" onClick={() => onRemove(c.id)}>×</span>
+          </span>
+        ))}
+        {items.length === 0 && <span className="hint">None yet.</span>}
+      </div>
+      <form onSubmit={submit} style={{ display: 'flex', gap: 6 }}>
+        <input placeholder="New category" value={name} onChange={(e) => setName(e.target.value)} style={{ flex: 1 }} />
+        {withGroup && (
+          <input placeholder="Group (optional)" value={group} onChange={(e) => setGroup(e.target.value)} style={{ flex: 1 }} />
+        )}
+        <button type="submit" className="cb-btn">ADD</button>
+      </form>
+      {hint && <span className="hint">{hint}</span>}
+    </div>
   )
 }
 
