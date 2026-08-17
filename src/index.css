@@ -221,6 +221,34 @@ select {
   margin-bottom: 16px; font-size: 14px; color: var(--cb-ink-2);
 }
 
+/* ---- Feed (Credit Cards) ---- */
+.feed { display: flex; flex-direction: column; gap: 8px; }
+.feed-card {
+  display: flex; align-items: center; gap: 12px; background: var(--cb-surface-1);
+  border: 1px solid var(--cb-line); border-radius: var(--cb-radius-md); padding: 10px 14px;
+}
+.feed-card.is-partial, .feed-card.is-paid { align-items: flex-start; }
+.feed-card.is-paid { cursor: pointer; padding: 6px 14px; opacity: 0.6; }
+.feed-card.is-paid:hover { opacity: 1; }
+.feed-card.is-paid .feed-desc { font-weight: 400; text-decoration: line-through; text-decoration-color: var(--cb-line-2); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+.feed-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.feed-desc { font-size: 13px; color: var(--cb-ink); font-weight: 700; }
+.feed-cat { font-size: 10px; color: var(--cb-ink-dim); letter-spacing: 0.04em; text-transform: uppercase; margin-top: 2px; }
+.feed-amt { font-weight: 700; font-size: 13px; color: var(--cb-ink); font-family: var(--cb-font-mono); }
+.pill { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; }
+.pill.paid { background: color-mix(in srgb, var(--cb-mint) 18%, transparent); color: var(--cb-mint); }
+.pill.partial { background: color-mix(in srgb, var(--cb-blue) 18%, transparent); color: var(--cb-blue); }
+.pill.unpaid { background: color-mix(in srgb, #ff9f4a 18%, transparent); color: #ff9f4a; }
+.progress-track { height: 4px; background: var(--cb-surface-3); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+.progress-fill { height: 100%; background: var(--cb-mint); }
+.feed-remaining { font-size: 10px; color: #ff9f4a; margin-top: 4px; }
+.payment-history { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; }
+.payment-row { font-size: 10px; color: var(--cb-ink-dim); font-family: var(--cb-font-mono); }
+.payment-form { display: flex; gap: 6px; margin-top: 8px; }
+.payment-form input { width: 100px; padding: 6px 8px; font-size: 12px; }
+.payment-form .cb-btn { padding: 6px 10px; font-size: 10px; }
+
 /* ---- Dashboard ---- */
 .stat-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;

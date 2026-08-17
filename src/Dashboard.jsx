@@ -1,15 +1,16 @@
 import { useCollection } from './useCollection'
 import { useCategories } from './useCategories'
 import { DEFAULT_EXPENSE_CATEGORIES } from './categories'
+import { remainingOf } from './payments'
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7)
 }
 
 // Sums differ by currency — never add MYR to USD. Returns "MYR 1,234.00 · USD 45.00".
-function sumByCurrency(rows) {
+function sumByCurrency(rows, amountOf = (r) => Number(r.amount)) {
   const totals = {}
-  for (const r of rows) totals[r.currency] = (totals[r.currency] || 0) + Number(r.amount)
+  for (const r of rows) totals[r.currency] = (totals[r.currency] || 0) + amountOf(r)
   const parts = Object.entries(totals).map(([cur, amt]) => `${cur} ${amt.toFixed(2)}`)
   return parts.length ? parts.join(' · ') : '—'
 }
@@ -27,7 +28,7 @@ export default function Dashboard({ uid }) {
   const monthCardTxns = cardTxns.filter((t) => t.date?.startsWith(month))
 
   const unpaidExpenses = monthExpenses.filter((e) => !e.paid)
-  const unpaidCardBalance = cardTxns.filter((t) => !t.paid) // all-time, not just this month
+  const unpaidCardBalance = cardTxns.filter((t) => remainingOf(t) > 0) // all-time, not just this month
 
   const byCategory = {}
   for (const e of monthExpenses) {
@@ -55,7 +56,7 @@ export default function Dashboard({ uid }) {
         </div>
         <div className="stat-tile">
           <div className="cb-eyebrow">Unpaid card balance</div>
-          <div className="stat-value">{sumByCurrency(unpaidCardBalance)}</div>
+          <div className="stat-value">{sumByCurrency(unpaidCardBalance, remainingOf)}</div>
         </div>
       </div>
 
