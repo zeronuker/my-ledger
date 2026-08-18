@@ -19,15 +19,22 @@ export function useExpenseEntries(uid) {
     return unsub
   }, [uid])
 
-  // Blank/zero clears the cell entirely rather than storing a 0 row.
+  // Blank/zero clears the cell entirely (including paid status) rather
+  // than storing a 0 row. merge:true on the write path so editing the
+  // amount of an already-paid cell doesn't wipe its paid flag.
   function setEntry(categoryId, month, amount) {
     const ref = doc(db, 'users', uid, 'expenseEntries', `${categoryId}_${month}`)
     if (!amount || Number(amount) === 0) {
       deleteDoc(ref)
     } else {
-      setDoc(ref, { categoryId, month, amount: Number(amount) })
+      setDoc(ref, { categoryId, month, amount: Number(amount) }, { merge: true })
     }
   }
 
-  return { items, loading, setEntry }
+  function setPaid(categoryId, month, paid) {
+    const ref = doc(db, 'users', uid, 'expenseEntries', `${categoryId}_${month}`)
+    setDoc(ref, { paid }, { merge: true })
+  }
+
+  return { items, loading, setEntry, setPaid }
 }

@@ -6,7 +6,7 @@ import { DEFAULT_EXPENSE_CATEGORIES } from './categories'
 import { monthRange, monthLabel, resolveRange } from './months'
 
 export default function Expenses({ uid }) {
-  const { items, loading, setEntry } = useExpenseEntries(uid)
+  const { items, loading, setEntry, setPaid } = useExpenseEntries(uid)
   const { items: categories, add: addSubCategory } = useCategories(uid, 'expenseCategories', DEFAULT_EXPENSE_CATEGORIES)
   const { items: categoryGroups, add: addCategoryGroup } = useCategoryGroups(uid)
   const [range, setRange] = useState('6M')
@@ -16,7 +16,7 @@ export default function Expenses({ uid }) {
 
   const entryByKey = useMemo(() => {
     const map = new Map()
-    for (const e of items) map.set(`${e.categoryId}_${e.month}`, Number(e.amount))
+    for (const e of items) map.set(`${e.categoryId}_${e.month}`, e)
     return map
   }, [items])
 
@@ -31,7 +31,7 @@ export default function Expenses({ uid }) {
     g.cats.push(c)
   }
 
-  const monthTotals = months.map((m) => categories.reduce((s, c) => s + (entryByKey.get(`${c.id}_${m}`) || 0), 0))
+  const monthTotals = months.map((m) => categories.reduce((s, c) => s + (entryByKey.get(`${c.id}_${m}`)?.amount || 0), 0))
   const grandTotal = monthTotals.reduce((a, b) => a + b, 0)
 
   return (
@@ -62,19 +62,25 @@ export default function Expenses({ uid }) {
                     <td colSpan={months.length + 3}>{g.name}</td>
                   </tr>
                   {g.cats.map((c) => {
-                    const vals = months.map((m) => entryByKey.get(`${c.id}_${m}`) || 0)
+                    const vals = months.map((m) => entryByKey.get(`${c.id}_${m}`)?.amount || 0)
                     const total = vals.reduce((a, b) => a + b, 0)
                     return (
                       <tr key={c.id}>
                         <td className="grid-row-cat">{c.name}</td>
-                        {months.map((m) => (
-                          <td key={m}>
-                            <EditableCell
-                              value={entryByKey.has(`${c.id}_${m}`) ? entryByKey.get(`${c.id}_${m}`) : undefined}
-                              onCommit={(amt) => setEntry(c.id, m, amt)}
-                            />
-                          </td>
-                        ))}
+                        {months.map((m) => {
+                          const entry = entryByKey.get(`${c.id}_${m}`)
+                          return (
+                            <td key={m} className={entry ? (entry.paid ? 'cell-paid' : 'cell-unpaid') : ''}>
+                              <EditableCell
+                                value={entry?.amount}
+                                paid={!!entry?.paid}
+                                hasValue={!!entry}
+                                onCommit={(amt) => setEntry(c.id, m, amt)}
+                                onTogglePaid={() => setPaid(c.id, m, !entry?.paid)}
+                              />
+                            </td>
+                          )
+                        })}
                         <td className="col-total">{total.toFixed(2)}</td>
                         <td className="col-avg">{(total / months.length).toFixed(2)}</td>
                       </tr>
@@ -106,7 +112,7 @@ export default function Expenses({ uid }) {
   )
 }
 
-function EditableCell({ value, onCommit }) {
+function EditableCell({ value, paid, hasValue, onCommit, onTogglePaid }) {
   const [text, setText] = useState(value != null ? String(value) : '')
 
   useEffect(() => {
@@ -119,13 +125,22 @@ function EditableCell({ value, onCommit }) {
   }
 
   return (
-    <input
-      type="text" inputMode="decimal" className="grid-cell-input" placeholder="—"
-      value={text}
-      onChange={(e) => setText(e.target.value.replace(/[^0-9.]/g, ''))}
-      onBlur={commit}
-      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-    />
+    <div className="cell-inner">
+      <input
+        type="text" inputMode="decimal" className="grid-cell-input" placeholder="—"
+        value={text}
+        onChange={(e) => setText(e.target.value.replace(/[^0-9.]/g, ''))}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+      />
+      {hasValue && (
+        <span
+          className={`paid-dot${paid ? ' is-paid' : ''}`}
+          onClick={onTogglePaid}
+          role="button" aria-label={paid ? 'Mark unpaid' : 'Mark paid'}
+        />
+      )}
+    </div>
   )
 }
 

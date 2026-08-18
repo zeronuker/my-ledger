@@ -186,13 +186,26 @@ select {
 .grid-total-row td { background: var(--cb-surface-2); font-weight: 700; color: var(--cb-ink); border-top: 2px solid var(--cb-line-2); }
 .grid-table .col-total { color: var(--cb-ink); font-weight: 700; }
 .grid-table .col-avg { color: var(--cb-ink-dim); }
+.cell-inner { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .grid-cell-input {
-  width: 76px; background: none; border: 1px solid transparent; border-radius: 4px;
+  width: 64px; background: none; border: 1px solid transparent; border-radius: 4px;
   color: var(--cb-ink); text-align: right; padding: 4px 6px; font-family: var(--cb-font-mono); font-size: 12px;
 }
 .grid-cell-input:hover { border-color: var(--cb-line-2); }
 .grid-cell-input:focus { border-color: var(--cb-mint); outline: none; background: var(--cb-surface-2); }
 .grid-cell-input::placeholder { color: var(--cb-ink-dim); }
+.paid-dot {
+  width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid #ff9f4a;
+  cursor: pointer; flex-shrink: 0; position: relative; padding: 6px; margin: -6px;
+  background-clip: content-box; box-sizing: content-box;
+}
+.paid-dot.is-paid { border-color: var(--cb-mint); background-color: var(--cb-mint); }
+.paid-dot.is-paid::after {
+  content: '\2713'; position: absolute; inset: 6px; display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: var(--cb-surface-0); font-weight: 700;
+}
+.grid-table td.cell-paid { background: color-mix(in srgb, var(--cb-mint) 12%, transparent); }
+.grid-table td.cell-unpaid { background: color-mix(in srgb, #ff9f4a 12%, transparent); }
 .grid-add-row td { padding: 4px 12px 10px; border-bottom: 1px solid var(--cb-line); }
 .grid-add-group-row td { padding: 12px; background: var(--cb-surface-1); border-bottom: 1px dashed var(--cb-line-2); }
 .grid-add-group-row .grid-add-plus { color: var(--cb-mint); font-weight: 700; }

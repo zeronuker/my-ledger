@@ -33,6 +33,7 @@ export default function Dashboard({ uid }) {
       - (monthIncomeDoc.deductions || []).reduce((s, r) => s + Number(r.amount), 0)
     : 0
   const expensesTotal = monthExpenses.reduce((s, e) => s + Number(e.amount), 0)
+  const unpaidExpensesTotal = monthExpenses.filter((e) => !e.paid).reduce((s, e) => s + Number(e.amount), 0)
 
   const unpaidCardBalance = cardTxns.filter((t) => remainingOf(t) > 0) // all-time, not just this month
 
@@ -57,6 +58,10 @@ export default function Dashboard({ uid }) {
         <div className="stat-tile">
           <div className="cb-eyebrow">Expenses this month</div>
           <div className="stat-value">{monthExpenses.length ? `MYR ${expensesTotal.toFixed(2)}` : '—'}</div>
+        </div>
+        <div className="stat-tile">
+          <div className="cb-eyebrow">Unpaid expenses</div>
+          <div className="stat-value">{monthExpenses.length ? `MYR ${unpaidExpensesTotal.toFixed(2)}` : '—'}</div>
         </div>
         <div className="stat-tile">
           <div className="cb-eyebrow">Unpaid card balance</div>
