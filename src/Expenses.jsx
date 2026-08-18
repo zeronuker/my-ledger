@@ -1,12 +1,14 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useExpenseEntries } from './useExpenseEntries'
 import { useCategories } from './useCategories'
+import { useCategoryGroups } from './useCategoryGroups'
 import { DEFAULT_EXPENSE_CATEGORIES } from './categories'
 import { monthRange, monthLabel, resolveRange } from './months'
 
 export default function Expenses({ uid }) {
   const { items, loading, setEntry } = useExpenseEntries(uid)
-  const { items: categories, add: addCategory } = useCategories(uid, 'expenseCategories', DEFAULT_EXPENSE_CATEGORIES)
+  const { items: categories, add: addSubCategory } = useCategories(uid, 'expenseCategories', DEFAULT_EXPENSE_CATEGORIES)
+  const { items: categoryGroups, add: addCategoryGroup } = useCategoryGroups(uid)
   const [range, setRange] = useState('6M')
 
   const { from, to } = resolveRange(range)
@@ -18,8 +20,10 @@ export default function Expenses({ uid }) {
     return map
   }, [items])
 
-  // group -> [categories], preserving first-seen group order; ungrouped last
-  const groups = []
+  // Categories (UTILITIES & FEES, LOANS, ...) → their sub-categories (rows).
+  // Explicit categoryGroups docs seed the section even with zero rows yet;
+  // sub-categories add themselves under a matching or new section.
+  const groups = categoryGroups.map((g) => ({ name: g.name, cats: [] }))
   for (const c of categories) {
     const key = c.group || 'Other'
     let g = groups.find((g) => g.name === key)
@@ -78,11 +82,16 @@ export default function Expenses({ uid }) {
                   })}
                   <tr className="grid-add-row">
                     <td colSpan={months.length + 3}>
-                      <AddCategoryRow onAdd={(name) => addCategory({ name, group: g.name === 'Other' ? null : g.name })} />
+                      <AddRow placeholder="Add sub-category" onAdd={(name) => addSubCategory({ name, group: g.name === 'Other' ? null : g.name })} />
                     </td>
                   </tr>
                 </Fragment>
               ))}
+              <tr className="grid-add-row grid-add-group-row">
+                <td colSpan={months.length + 3}>
+                  <AddRow placeholder="Add category" onAdd={(name) => addCategoryGroup({ name })} />
+                </td>
+              </tr>
               <tr className="grid-total-row">
                 <td>Total</td>
                 {monthTotals.map((v, i) => <td key={i}>{v.toFixed(2)}</td>)}
@@ -120,7 +129,7 @@ function EditableCell({ value, onCommit }) {
   )
 }
 
-function AddCategoryRow({ onAdd }) {
+function AddRow({ placeholder, onAdd }) {
   const [name, setName] = useState('')
 
   function submit(e) {
@@ -133,7 +142,7 @@ function AddCategoryRow({ onAdd }) {
   return (
     <form onSubmit={submit} className="grid-add-form">
       <span className="grid-add-plus">+</span>
-      <input placeholder="Add category" value={name} onChange={(e) => setName(e.target.value)} />
+      <input placeholder={placeholder} value={name} onChange={(e) => setName(e.target.value)} />
       <button type="submit" className="cb-btn">ADD</button>
     </form>
   )

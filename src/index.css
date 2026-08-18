@@ -194,6 +194,8 @@ select {
 .grid-cell-input:focus { border-color: var(--cb-mint); outline: none; background: var(--cb-surface-2); }
 .grid-cell-input::placeholder { color: var(--cb-ink-dim); }
 .grid-add-row td { padding: 4px 12px 10px; border-bottom: 1px solid var(--cb-line); }
+.grid-add-group-row td { padding: 12px; background: var(--cb-surface-1); border-bottom: 1px dashed var(--cb-line-2); }
+.grid-add-group-row .grid-add-plus { color: var(--cb-mint); font-weight: 700; }
 .grid-add-form { display: flex; align-items: center; gap: 8px; }
 .grid-add-plus { color: var(--cb-ink-dim); font-size: 12px; }
 .grid-add-form input { width: 160px; padding: 5px 8px; font-size: 12px; }

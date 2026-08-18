@@ -105,8 +105,8 @@ function PreferencesTab({ uid }) {
   return (
     <>
       <CategoryList
-        label="Expense categories"
-        hint="Grouped in the Expenses grid (e.g. Loans, Utilities & Fees)."
+        label="Expense sub-categories"
+        hint="Grouped under a category in the Expenses grid (e.g. Loans, Utilities & Fees)."
         items={expense.items} onAdd={expense.add} onRemove={expense.remove}
         withGroup
       />
