@@ -1,4 +1,5 @@
 import { useCollection } from './useCollection'
+import { useExpenseEntries } from './useExpenseEntries'
 import { useCategories } from './useCategories'
 import { DEFAULT_EXPENSE_CATEGORIES } from './categories'
 import { remainingOf } from './payments'
@@ -16,14 +17,14 @@ function sumByCurrency(rows, amountOf = (r) => Number(r.amount)) {
 }
 
 export default function Dashboard({ uid }) {
-  const { items: expenses } = useCollection(uid, 'expenses')
+  const { items: expenseEntries } = useExpenseEntries(uid)
   const { items: income } = useCollection(uid, 'income', 'month')
   const { items: cardTxns } = useCollection(uid, 'cardTransactions')
   const { items: categories } = useCategories(uid, 'expenseCategories', DEFAULT_EXPENSE_CATEGORIES)
   const catById = Object.fromEntries(categories.map((c) => [c.id, c]))
 
   const month = currentMonth()
-  const monthExpenses = expenses.filter((e) => e.date?.startsWith(month))
+  const monthExpenses = expenseEntries.filter((e) => e.month === month)
   const monthIncomeDoc = income.find((i) => i.month === month)
   const monthCardTxns = cardTxns.filter((t) => t.date?.startsWith(month))
 
@@ -31,8 +32,8 @@ export default function Dashboard({ uid }) {
     ? (monthIncomeDoc.earnings || []).reduce((s, r) => s + Number(r.amount), 0)
       - (monthIncomeDoc.deductions || []).reduce((s, r) => s + Number(r.amount), 0)
     : 0
+  const expensesTotal = monthExpenses.reduce((s, e) => s + Number(e.amount), 0)
 
-  const unpaidExpenses = monthExpenses.filter((e) => !e.paid)
   const unpaidCardBalance = cardTxns.filter((t) => remainingOf(t) > 0) // all-time, not just this month
 
   const byCategory = {}
@@ -55,11 +56,7 @@ export default function Dashboard({ uid }) {
         </div>
         <div className="stat-tile">
           <div className="cb-eyebrow">Expenses this month</div>
-          <div className="stat-value">{sumByCurrency(monthExpenses)}</div>
-        </div>
-        <div className="stat-tile">
-          <div className="cb-eyebrow">Unpaid expenses</div>
-          <div className="stat-value">{sumByCurrency(unpaidExpenses)}</div>
+          <div className="stat-value">{monthExpenses.length ? `MYR ${expensesTotal.toFixed(2)}` : '—'}</div>
         </div>
         <div className="stat-tile">
           <div className="cb-eyebrow">Unpaid card balance</div>
