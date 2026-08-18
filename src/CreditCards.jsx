@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useCollection } from './useCollection'
 import { useCategories } from './useCategories'
 import { DEFAULT_CARD_CATEGORIES } from './categories'
 import { paidAmountOf, remainingOf, statusOf } from './payments'
+import { monthLabel, resolveRange } from './months'
 
 function today() {
   return new Date().toISOString().slice(0, 10)
@@ -71,10 +72,18 @@ export default function CreditCards({ uid }) {
 }
 
 const CAT_COLORS = ['var(--cb-mint)', 'var(--cb-blue)', 'var(--cb-violet)']
+const SORT_FIELDS = [
+  { id: 'date', label: 'Date' },
+  { id: 'category', label: 'Category' },
+  { id: 'amount', label: 'Amount' },
+]
 
 function CardFeed({ card, items, loading, categories, onAdd, onAddPayment, onRemove }) {
   const [form, setForm] = useState(EMPTY_TXN)
-  const [expanded, setExpanded] = useState(() => new Set())
+  const [tab, setTab] = useState('active') // 'active' | 'paid'
+  const [range, setRange] = useState('6M')
+  const [sortField, setSortField] = useState('date')
+  const [sortDir, setSortDir] = useState('desc')
   const catById = Object.fromEntries(categories.map((c) => [c.id, c]))
   const catColor = Object.fromEntries(categories.map((c, i) => [c.id, CAT_COLORS[i % CAT_COLORS.length]]))
 
@@ -87,15 +96,33 @@ function CardFeed({ card, items, loading, categories, onAdd, onAddPayment, onRem
     setForm(EMPTY_TXN)
   }
 
-  function toggle(id) {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+  const { from, to } = resolveRange(range)
+  const inRange = items.filter((t) => {
+    const m = t.date?.slice(0, 7)
+    return m && m >= from && m <= to
+  })
+  const tabItems = inRange.filter((t) => (tab === 'paid' ? statusOf(t) === 'paid' : statusOf(t) !== 'paid'))
+
+  const sortCmp = (a, b) => {
+    let cmp
+    if (sortField === 'amount') cmp = Number(a.amount) - Number(b.amount)
+    else if (sortField === 'category') cmp = (catById[a.categoryId]?.name || '').localeCompare(catById[b.categoryId]?.name || '')
+    else cmp = (a.date || '').localeCompare(b.date || '')
+    return sortDir === 'asc' ? cmp : -cmp
   }
 
-  const sorted = [...items].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+  const byMonth = useMemo(() => {
+    const map = new Map()
+    for (const t of tabItems) {
+      const m = t.date?.slice(0, 7) || 'Unknown'
+      if (!map.has(m)) map.set(m, [])
+      map.get(m).push(t)
+    }
+    return [...map.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([month, rows]) => [month, [...rows].sort(sortCmp)])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabItems, sortField, sortDir])
 
   return (
     <div className="card-ledger">
@@ -118,31 +145,56 @@ function CardFeed({ card, items, loading, categories, onAdd, onAddPayment, onRem
         <button type="submit" className="cb-btn cb-btn--primary">ADD</button>
       </form>
 
-      {loading ? <p className="dim">Loading…</p> : (
-        <div className="feed">
-          {sorted.map((t) => (
-            <TxnCard
-              key={t.id} txn={t} currency={card.currency}
-              category={catById[t.categoryId]} dotColor={catColor[t.categoryId]}
-              expanded={expanded.has(t.id)} onToggle={() => toggle(t.id)}
-              onAddPayment={(amt) => onAddPayment(t, amt)} onRemove={() => onRemove(t.id)}
-            />
-          ))}
-          {items.length === 0 && <p className="dim">No transactions yet.</p>}
+      <div className="feed-toolbar">
+        <div className="seg">
+          <button className={tab === 'active' ? 'on' : ''} onClick={() => setTab('active')}>Active</button>
+          <button className={tab === 'paid' ? 'on' : ''} onClick={() => setTab('paid')}>Paid</button>
         </div>
+        <div className="range-bar" style={{ marginBottom: 0 }}>
+          {['3M', '6M', '12M', 'YTD'].map((r) => (
+            <button key={r} className={`range-chip${range === r ? ' on' : ''}`} onClick={() => setRange(r)}>{r}</button>
+          ))}
+        </div>
+        <div className="sort-bar">
+          <select value={sortField} onChange={(e) => setSortField(e.target.value)}>
+            {SORT_FIELDS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+          </select>
+          <button className="icon-btn" onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')} aria-label="Toggle sort direction">
+            {sortDir === 'asc' ? '↑' : '↓'}
+          </button>
+        </div>
+      </div>
+
+      {loading ? <p className="dim">Loading…</p> : (
+        <>
+          {byMonth.map(([month, rows]) => (
+            <div key={month} className="feed-month-group">
+              <div className="feed-month-label">{monthLabel(month)}</div>
+              <div className="feed">
+                {rows.map((t) => (
+                  <TxnCard
+                    key={t.id} txn={t} currency={card.currency}
+                    category={catById[t.categoryId]} dotColor={catColor[t.categoryId]}
+                    onAddPayment={(amt) => onAddPayment(t, amt)} onRemove={() => onRemove(t.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+          {byMonth.length === 0 && <p className="dim">Nothing here for this range.</p>}
+        </>
       )}
     </div>
   )
 }
 
-function TxnCard({ txn, currency, category, dotColor, expanded, onToggle, onAddPayment, onRemove }) {
+function TxnCard({ txn, currency, category, dotColor, onAddPayment, onRemove }) {
   const [payAmount, setPayAmount] = useState('')
   const status = statusOf(txn)
   const paid = paidAmountOf(txn)
   const remaining = remainingOf(txn)
   const isPaid = status === 'paid'
   const isPartial = status === 'partial'
-  const showDetails = !isPaid || expanded
 
   function submitPayment(e) {
     e.preventDefault()
@@ -153,31 +205,26 @@ function TxnCard({ txn, currency, category, dotColor, expanded, onToggle, onAddP
   }
 
   return (
-    <div
-      className={`feed-card${isPaid ? ' is-paid' : ''}${isPartial ? ' is-partial' : ''}`}
-      onClick={isPaid ? onToggle : undefined}
-    >
+    <div className={`feed-card${isPartial ? ' is-partial' : ''}`}>
       <span className="dot" style={{ background: dotColor || 'var(--cb-ink-dim)' }} />
       <div className="feed-main">
         <div className="feed-desc">{txn.description}</div>
-        {(!isPaid || expanded) && (
-          <div className="feed-cat">{category?.name || 'No category'} · {txn.date}</div>
-        )}
+        <div className="feed-cat">{category?.name || 'No category'} · {txn.date}</div>
         {isPartial && (
           <>
             <div className="progress-track"><div className="progress-fill" style={{ width: `${Math.round(paid / txn.amount * 100)}%` }} /></div>
-            <div className="feed-remaining">{currency} {remaining.toFixed(2)} remaining</div>
+            <div className="feed-remaining">Paid {currency} {paid.toFixed(2)} · Balance {currency} {remaining.toFixed(2)}</div>
           </>
         )}
-        {showDetails && paid > 0 && (
+        {paid > 0 && (
           <div className="payment-history">
             {(txn.payments || []).map((p, i) => (
               <div key={i} className="payment-row">{p.date} — {currency} {Number(p.amount).toFixed(2)}</div>
             ))}
           </div>
         )}
-        {showDetails && !isPaid && (
-          <form className="payment-form" onSubmit={submitPayment} onClick={(e) => e.stopPropagation()}>
+        {!isPaid && (
+          <form className="payment-form" onSubmit={submitPayment}>
             <input type="number" step="0.01" placeholder="Add payment" value={payAmount}
               onChange={(e) => setPayAmount(e.target.value)} />
             <button type="submit" className="cb-btn">ADD</button>
@@ -187,7 +234,7 @@ function TxnCard({ txn, currency, category, dotColor, expanded, onToggle, onAddP
       </div>
       <span className={`pill ${status}`}>{status[0].toUpperCase() + status.slice(1)}</span>
       <span className="feed-amt">{currency} {Number(txn.amount).toFixed(2)}</span>
-      {showDetails && <button className="cb-btn cb-btn--danger" onClick={(e) => { e.stopPropagation(); onRemove() }}>×</button>}
+      <button className="cb-btn cb-btn--danger" onClick={onRemove}>×</button>
     </div>
   )
 }

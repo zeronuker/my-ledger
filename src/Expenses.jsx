@@ -2,29 +2,9 @@ import { Fragment, useMemo, useState } from 'react'
 import { useCollection } from './useCollection'
 import { useCategories } from './useCategories'
 import { DEFAULT_EXPENSE_CATEGORIES } from './categories'
+import { currentMonth, monthRange, monthLabel, resolveRange } from './months'
 
 function today() { return new Date().toISOString().slice(0, 10) }
-function currentMonth() { return new Date().toISOString().slice(0, 7) }
-
-function addMonths(monthStr, n) {
-  const [y, m] = monthStr.split('-').map(Number)
-  const d = new Date(y, m - 1 + n, 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-function monthRange(from, to) {
-  const months = []
-  let cur = from
-  let guard = 0
-  while (cur <= to && guard++ < 60) {
-    months.push(cur)
-    cur = addMonths(cur, 1)
-  }
-  return months
-}
-function monthLabel(monthStr) {
-  const [y, m] = monthStr.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleString(undefined, { month: 'short', year: 'numeric' })
-}
 
 const EMPTY = { description: '', categoryId: '', amount: '', currency: 'MYR', date: today(), paid: false, recurring: false }
 
@@ -34,9 +14,8 @@ export default function Expenses({ uid }) {
   const [view, setView] = useState('grid') // 'grid' | 'list'
   const [form, setForm] = useState(EMPTY)
   const [range, setRange] = useState('6M')
-  const thisMonth = currentMonth()
-  const from = range === 'YTD' ? `${thisMonth.slice(0, 4)}-01` : addMonths(thisMonth, -(RANGE_MONTHS[range] - 1))
-  const months = useMemo(() => monthRange(from, thisMonth), [from, thisMonth])
+  const { from, to } = resolveRange(range)
+  const months = useMemo(() => monthRange(from, to), [from, to])
 
   const catById = Object.fromEntries(categories.map((c) => [c.id, c]))
 
@@ -110,8 +89,6 @@ export default function Expenses({ uid }) {
     </section>
   )
 }
-
-const RANGE_MONTHS = { '3M': 3, '6M': 6, '12M': 12 }
 
 function ExpenseGrid({ items, categories, months, range, setRange }) {
   // group -> [categories], preserving first-seen group order; ungrouped last
