@@ -203,15 +203,25 @@ select {
 .grid-cell-input.is-paid { background: color-mix(in srgb, var(--cb-mint) 14%, transparent); border-color: color-mix(in srgb, var(--cb-mint) 35%, transparent); color: var(--cb-mint); font-weight: 700; }
 .paid-checkbox { width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; accent-color: var(--cb-mint); }
 
-/* ---- Year selector + month visibility (Expenses) ---- */
+/* ---- Year selector (Expenses) ---- */
 .year-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
 .year-bar label { font-family: var(--cb-font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cb-ink-dim); }
-.hidden-months-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 14px; }
-.hidden-month-chip {
-  font-family: var(--cb-font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--cb-ink-dim);
-  background: none; border: 1px solid var(--cb-line-2); border-radius: 4px; padding: 4px 8px; cursor: pointer;
+
+/* ---- Collapsed month column stub (eLogBook-style) ---- */
+.grid-table th.th-stub, .grid-table td.td-stub { width: 20px; min-width: 20px; max-width: 20px; padding: 0; }
+.grid-table th.th-stub { padding: 6px 0; cursor: pointer; }
+.th-stub-label {
+  writing-mode: vertical-rl; text-orientation: mixed; white-space: nowrap;
+  font-size: 9px; letter-spacing: 0.04em; color: var(--cb-ink-dim);
 }
-.hidden-month-chip:hover { color: var(--cb-ink); border-color: var(--cb-ink-dim); }
+.grid-table td.td-stub {
+  background: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--cb-ink) 10%, transparent),
+    color-mix(in srgb, var(--cb-ink) 10%, transparent) 3px,
+    transparent 3px, transparent 7px
+  );
+}
 .grid-table th.th-current { color: var(--cb-mint); }
 .grid-table th.th-hideable { cursor: pointer; }
 .grid-table th.th-hideable:hover { color: var(--cb-ink); text-decoration: line-through; }

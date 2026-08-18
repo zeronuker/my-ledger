@@ -28,7 +28,7 @@ export default function Expenses({ uid }) {
   const years = useMemo(() => Array.from({ length: 6 }, (_, i) => String(Number(thisYear) + i)), [thisYear])
 
   const allMonths = useMemo(() => monthRange(`${selectedYear}-01`, `${selectedYear}-12`), [selectedYear])
-  const months = allMonths.filter((m) => !isCurrentYear || !hiddenMonths.has(m))
+  const hiddenSet = isCurrentYear ? hiddenMonths : new Set()
 
   // One-time backfill: categories created before expenseCategoryGroups
   // existed only had a free-text `.group` string, no real group doc — give
@@ -70,7 +70,7 @@ export default function Expenses({ uid }) {
     g.cats.push(c)
   }
 
-  const monthTotals = months.map((m) => categories.items.reduce((s, c) => s + (entryByKey.get(`${c.id}_${m}`)?.amount || 0), 0))
+  const monthTotals = allMonths.map((m) => categories.items.reduce((s, c) => s + (entryByKey.get(`${c.id}_${m}`)?.amount || 0), 0))
   const grandTotal = monthTotals.reduce((a, b) => a + b, 0)
 
   function toggleMonth(m) {
@@ -92,24 +92,20 @@ export default function Expenses({ uid }) {
         </select>
       </div>
 
-      {isCurrentYear && hiddenMonths.size > 0 && (
-        <div className="hidden-months-strip">
-          <span className="dim">Hidden:</span>
-          {[...hiddenMonths].sort().map((m) => (
-            <button key={m} className="hidden-month-chip" onClick={() => toggleMonth(m)} title="Show this month">
-              {monthLabel(m)} ×
-            </button>
-          ))}
-        </div>
-      )}
-
       {loading || categories.loading || categoryGroups.loading ? <p className="dim">Loading…</p> : (
         <div className="grid-wrap">
           <table className="grid-table">
             <thead>
               <tr>
                 <th>Category</th>
-                {months.map((m) => {
+                {allMonths.map((m) => {
+                  if (hiddenSet.has(m)) {
+                    return (
+                      <th key={m} className="th-stub" onClick={() => toggleMonth(m)} title="Hidden — click to reveal">
+                        <span className="th-stub-label">{monthLabel(m).split(' ')[0].toUpperCase()}</span>
+                      </th>
+                    )
+                  }
                   const hideable = isCurrentYear && m < thisMonth
                   return (
                     <th
@@ -130,14 +126,16 @@ export default function Expenses({ uid }) {
               {groups.map((g, gi) => (
                 <CategoryGroupRows
                   key={g.name} group={g} color={CATEGORY_COLORS[gi % CATEGORY_COLORS.length]}
-                  months={months} entryByKey={entryByKey} setEntry={setEntry} setPaid={setPaid}
+                  months={allMonths} hiddenSet={hiddenSet} entryByKey={entryByKey} setEntry={setEntry} setPaid={setPaid}
                 />
               ))}
               <tr className="grid-total-row">
                 <td>Total</td>
-                {monthTotals.map((v, i) => <td key={i}>{v.toFixed(2)}</td>)}
+                {allMonths.map((m, i) => (
+                  hiddenSet.has(m) ? <td key={m} className="td-stub" /> : <td key={m}>{monthTotals[i].toFixed(2)}</td>
+                ))}
                 <td className="col-total">{grandTotal.toFixed(2)}</td>
-                <td className="col-avg">{(grandTotal / months.length).toFixed(2)}</td>
+                <td className="col-avg">{(grandTotal / allMonths.length).toFixed(2)}</td>
               </tr>
             </tbody>
           </table>
@@ -155,7 +153,7 @@ export default function Expenses({ uid }) {
   )
 }
 
-function CategoryGroupRows({ group, color, months, entryByKey, setEntry, setPaid }) {
+function CategoryGroupRows({ group, color, months, hiddenSet, entryByKey, setEntry, setPaid }) {
   const catStyle = { '--cat-color': color }
   return (
     <Fragment>
@@ -169,6 +167,7 @@ function CategoryGroupRows({ group, color, months, entryByKey, setEntry, setPaid
           <tr key={c.id} style={catStyle}>
             <td className="grid-row-cat"><span className="cat-colored">{c.name}</span></td>
             {months.map((m) => {
+              if (hiddenSet.has(m)) return <td key={m} className="td-stub" />
               const entry = entryByKey.get(`${c.id}_${m}`)
               return (
                 <td key={m}>
