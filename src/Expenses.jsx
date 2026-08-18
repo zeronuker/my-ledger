@@ -70,13 +70,13 @@ export default function Expenses({ uid }) {
                         {months.map((m) => {
                           const entry = entryByKey.get(`${c.id}_${m}`)
                           return (
-                            <td key={m} className={entry ? (entry.paid ? 'cell-paid' : 'cell-unpaid') : ''}>
+                            <td key={m}>
                               <EditableCell
                                 value={entry?.amount}
                                 paid={!!entry?.paid}
                                 hasValue={!!entry}
                                 onCommit={(amt) => setEntry(c.id, m, amt)}
-                                onSetPaid={(isPaid) => setPaid(c.id, m, isPaid)}
+                                onTogglePaid={() => setPaid(c.id, m, !entry?.paid)}
                               />
                             </td>
                           )
@@ -112,7 +112,7 @@ export default function Expenses({ uid }) {
   )
 }
 
-function EditableCell({ value, paid, hasValue, onCommit, onSetPaid }) {
+function EditableCell({ value, paid, hasValue, onCommit, onTogglePaid }) {
   const [text, setText] = useState(value != null ? String(value) : '')
 
   useEffect(() => {
@@ -127,21 +127,19 @@ function EditableCell({ value, paid, hasValue, onCommit, onSetPaid }) {
   return (
     <div className="cell-inner">
       <input
-        type="text" inputMode="decimal" className="grid-cell-input" placeholder="—"
+        type="text" inputMode="decimal" placeholder="—"
+        className={`grid-cell-input${hasValue ? (paid ? ' is-paid' : ' is-unpaid') : ''}`}
         value={text}
         onChange={(e) => setText(e.target.value.replace(/[^0-9.]/g, ''))}
         onBlur={commit}
         onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
       />
       {hasValue && (
-        <select
-          className={`paid-select ${paid ? 'is-paid' : 'is-unpaid'}`}
-          value={paid ? 'paid' : 'unpaid'}
-          onChange={(e) => onSetPaid(e.target.value === 'paid')}
-        >
-          <option value="unpaid" style={{ background: 'var(--cb-surface-2)', color: '#ff9f4a' }}>UNPAID</option>
-          <option value="paid" style={{ background: 'var(--cb-surface-2)', color: 'var(--cb-mint)' }}>PAID</option>
-        </select>
+        <span
+          className={`paid-dot${paid ? ' is-paid' : ''}`}
+          onClick={onTogglePaid}
+          role="button" aria-label={paid ? 'Mark unpaid' : 'Mark paid'}
+        />
       )}
     </div>
   )
