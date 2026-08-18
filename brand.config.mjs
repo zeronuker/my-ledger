@@ -1,6 +1,6 @@
 export default {
   appName: 'ledger',
-  wordmark: { line1: 'My', line2: 'Ledger' },
+  wordmark: { line1: 'Cirrus', line2: 'Stratus' },
   fonts: [
     { family: 'Tourney',      slug: 'tourney',      weights: [500, 700, 900] },
     { family: 'Inter',        slug: 'inter',         weights: [400, 500, 600, 700] },
