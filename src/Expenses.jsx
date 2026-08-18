@@ -5,7 +5,7 @@ import { useExpenseEntries } from './useExpenseEntries'
 import { useCategories } from './useCategories'
 import { useCategoryGroups } from './useCategoryGroups'
 import { DEFAULT_EXPENSE_CATEGORIES } from './categories'
-import { monthLabel, currentYearToDate, currentMonth } from './months'
+import { monthLabel, monthRange, currentMonth } from './months'
 import CategoryManagerModal from './CategoryManagerModal.jsx'
 
 // Fixed palette (not the user's single customizable accent — the point here
@@ -21,9 +21,14 @@ export default function Expenses({ uid }) {
   const [managerOpen, setManagerOpen] = useState(false)
   const backfillRan = useRef(false)
 
-  const allMonths = useMemo(() => currentYearToDate(), [])
   const thisMonth = currentMonth()
-  const months = allMonths.filter((m) => !hiddenMonths.has(m))
+  const thisYear = thisMonth.slice(0, 4)
+  const [selectedYear, setSelectedYear] = useState(thisYear)
+  const isCurrentYear = selectedYear === thisYear
+  const years = useMemo(() => Array.from({ length: 6 }, (_, i) => String(Number(thisYear) + i)), [thisYear])
+
+  const allMonths = useMemo(() => monthRange(`${selectedYear}-01`, `${selectedYear}-12`), [selectedYear])
+  const months = allMonths.filter((m) => !isCurrentYear || !hiddenMonths.has(m))
 
   // One-time backfill: categories created before expenseCategoryGroups
   // existed only had a free-text `.group` string, no real group doc — give
@@ -80,19 +85,23 @@ export default function Expenses({ uid }) {
     <section>
       <h2 className="section-title">Expenses</h2>
 
-      <div className="month-toggle-bar">
-        {allMonths.map((m) => (
-          <button
-            key={m}
-            className={`month-toggle-chip${hiddenMonths.has(m) ? ' is-hidden' : ''}`}
-            disabled={m === thisMonth}
-            onClick={() => toggleMonth(m)}
-            title={m === thisMonth ? 'Current month is always shown' : hiddenMonths.has(m) ? 'Show this month' : 'Hide this month'}
-          >
-            {monthLabel(m)}
-          </button>
-        ))}
+      <div className="year-bar">
+        <label htmlFor="expense-year">Year</label>
+        <select id="expense-year" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+          {years.map((y) => <option key={y} value={y}>{y}</option>)}
+        </select>
       </div>
+
+      {isCurrentYear && hiddenMonths.size > 0 && (
+        <div className="hidden-months-strip">
+          <span className="dim">Hidden:</span>
+          {[...hiddenMonths].sort().map((m) => (
+            <button key={m} className="hidden-month-chip" onClick={() => toggleMonth(m)} title="Show this month">
+              {monthLabel(m)} ×
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading || categories.loading || categoryGroups.loading ? <p className="dim">Loading…</p> : (
         <div className="grid-wrap">
@@ -100,7 +109,19 @@ export default function Expenses({ uid }) {
             <thead>
               <tr>
                 <th>Category</th>
-                {months.map((m) => <th key={m}>{monthLabel(m)}</th>)}
+                {months.map((m) => {
+                  const hideable = isCurrentYear && m < thisMonth
+                  return (
+                    <th
+                      key={m}
+                      className={`${m === thisMonth ? 'th-current' : ''}${hideable ? ' th-hideable' : ''}`}
+                      onClick={hideable ? () => toggleMonth(m) : undefined}
+                      title={hideable ? 'Hide this month' : undefined}
+                    >
+                      {monthLabel(m)}
+                    </th>
+                  )
+                })}
                 <th className="col-total">Total</th>
                 <th className="col-avg">Avg</th>
               </tr>

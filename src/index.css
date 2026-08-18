@@ -203,14 +203,18 @@ select {
 .grid-cell-input.is-paid { background: color-mix(in srgb, var(--cb-mint) 14%, transparent); border-color: color-mix(in srgb, var(--cb-mint) 35%, transparent); color: var(--cb-mint); font-weight: 700; }
 .paid-checkbox { width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; accent-color: var(--cb-mint); }
 
-/* ---- Month visibility toggles (Expenses) ---- */
-.month-toggle-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-.month-toggle-chip {
-  font-family: var(--cb-font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--cb-ink);
-  background: var(--cb-surface-2); border: 1px solid var(--cb-line-2); border-radius: 4px; padding: 5px 10px; cursor: pointer;
+/* ---- Year selector + month visibility (Expenses) ---- */
+.year-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.year-bar label { font-family: var(--cb-font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cb-ink-dim); }
+.hidden-months-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 14px; }
+.hidden-month-chip {
+  font-family: var(--cb-font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--cb-ink-dim);
+  background: none; border: 1px solid var(--cb-line-2); border-radius: 4px; padding: 4px 8px; cursor: pointer;
 }
-.month-toggle-chip.is-hidden { color: var(--cb-ink-dim); background: none; text-decoration: line-through; }
-.month-toggle-chip:disabled { color: var(--cb-mint); border-color: var(--cb-mint); cursor: default; }
+.hidden-month-chip:hover { color: var(--cb-ink); border-color: var(--cb-ink-dim); }
+.grid-table th.th-current { color: var(--cb-mint); }
+.grid-table th.th-hideable { cursor: pointer; }
+.grid-table th.th-hideable:hover { color: var(--cb-ink); text-decoration: line-through; }
 
 /* ---- Floating add button ---- */
 .fab {
