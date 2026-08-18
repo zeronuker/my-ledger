@@ -23,3 +23,5 @@ public/build-info.json
 .idea
 .DS_Store
 .vercel
+
+.vercel
