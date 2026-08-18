@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useCollection } from './useCollection'
+import { useCardTransactions } from './useCardTransactions'
 import { useCategories } from './useCategories'
 import { DEFAULT_CARD_CATEGORIES } from './categories'
 import { paidAmountOf, remainingOf, statusOf } from './payments'
@@ -10,17 +11,17 @@ function today() {
 }
 
 const EMPTY_TXN = { description: '', categoryId: '', amount: '', date: today() }
+const PAGE_SIZE = 25
 
 export default function CreditCards({ uid }) {
   const { items: cards, add: addCard, remove: removeCard } = useCollection(uid, 'cards', 'name')
   const { items: categories } = useCategories(uid, 'cardCategories', DEFAULT_CARD_CATEGORIES)
-  const { items: allTxns, loading, add: addTxn, update, remove: removeTxn } = useCollection(uid, 'cardTransactions')
   const [selected, setSelected] = useState(null)
   const [newCard, setNewCard] = useState({ name: '', currency: 'MYR' })
 
   const cardId = selected ?? cards[0]?.id ?? null
   const card = cards.find((c) => c.id === cardId)
-  const txns = allTxns.filter((t) => t.cardId === cardId)
+  const { items: txns, loading, add: addTxn, update, remove: removeTxn } = useCardTransactions(uid, cardId)
 
   function submitCard(e) {
     e.preventDefault()
@@ -84,6 +85,9 @@ function CardFeed({ card, items, loading, categories, onAdd, onAddPayment, onRem
   const [range, setRange] = useState('6M')
   const [sortField, setSortField] = useState('date')
   const [sortDir, setSortDir] = useState('desc')
+  const [expandedMonths, setExpandedMonths] = useState(() => new Set())
+  const [autoKey, setAutoKey] = useState('')
+  const [visibleCounts, setVisibleCounts] = useState({})
   const catById = Object.fromEntries(categories.map((c) => [c.id, c]))
   const catColor = Object.fromEntries(categories.map((c, i) => [c.id, CAT_COLORS[i % CAT_COLORS.length]]))
 
@@ -123,6 +127,26 @@ function CardFeed({ card, items, loading, categories, onAdd, onAddPayment, onRem
       .map(([month, rows]) => [month, [...rows].sort(sortCmp)])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabItems, sortField, sortDir])
+
+  // Auto-expand just the newest month whenever the tab/range selection
+  // changes to a set of months we haven't shown before — collapsed-by-
+  // default is what keeps a backlog of months from being one giant scroll.
+  // Firestore delivers a cache-based snapshot (sometimes empty) before the
+  // authoritative server one, so "loading just became false" isn't a
+  // reliable trigger — wait for byMonth to actually have data instead.
+  const key = `${tab}|${range}`
+  if (key !== autoKey && byMonth.length > 0) {
+    setAutoKey(key)
+    setExpandedMonths(new Set([byMonth[0][0]]))
+  }
+
+  function toggleMonth(month) {
+    setExpandedMonths((prev) => {
+      const next = new Set(prev)
+      next.has(month) ? next.delete(month) : next.add(month)
+      return next
+    })
+  }
 
   return (
     <div className="card-ledger">
@@ -167,20 +191,45 @@ function CardFeed({ card, items, loading, categories, onAdd, onAddPayment, onRem
 
       {loading ? <p className="dim">Loading…</p> : (
         <>
-          {byMonth.map(([month, rows]) => (
-            <div key={month} className="feed-month-group">
-              <div className="feed-month-label">{monthLabel(month)}</div>
-              <div className="feed">
-                {rows.map((t) => (
-                  <TxnCard
-                    key={t.id} txn={t} currency={card.currency}
-                    category={catById[t.categoryId]} dotColor={catColor[t.categoryId]}
-                    onAddPayment={(amt) => onAddPayment(t, amt)} onRemove={() => onRemove(t.id)}
-                  />
-                ))}
+          {byMonth.map(([month, rows]) => {
+            const isOpen = expandedMonths.has(month)
+            const shown = visibleCounts[month] ?? PAGE_SIZE
+            const visibleRows = rows.slice(0, shown)
+            const monthUnpaid = rows.reduce((s, t) => s + remainingOf(t), 0)
+            return (
+              <div key={month} className="feed-month-group">
+                <button className="feed-month-header" onClick={() => toggleMonth(month)}>
+                  <span className="feed-month-chevron">{isOpen ? '▾' : '▸'}</span>
+                  <span className="feed-month-label">{monthLabel(month)}</span>
+                  <span className="feed-month-meta">
+                    {rows.length} {rows.length === 1 ? 'entry' : 'entries'}
+                    {tab === 'active' && monthUnpaid > 0 ? ` · ${card.currency} ${monthUnpaid.toFixed(2)} unpaid` : ''}
+                  </span>
+                </button>
+                {isOpen && (
+                  <>
+                    <div className="feed">
+                      {visibleRows.map((t) => (
+                        <TxnCard
+                          key={t.id} txn={t} currency={card.currency}
+                          category={catById[t.categoryId]} dotColor={catColor[t.categoryId]}
+                          onAddPayment={(amt) => onAddPayment(t, amt)} onRemove={() => onRemove(t.id)}
+                        />
+                      ))}
+                    </div>
+                    {shown < rows.length && (
+                      <button
+                        className="cb-btn feed-show-more"
+                        onClick={() => setVisibleCounts((v) => ({ ...v, [month]: shown + PAGE_SIZE }))}
+                      >
+                        SHOW {Math.min(PAGE_SIZE, rows.length - shown)} MORE
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
           {byMonth.length === 0 && <p className="dim">Nothing here for this range.</p>}
         </>
       )}

@@ -272,10 +272,22 @@ select {
 .sort-bar { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .sort-bar select { padding: 6px 10px; font-size: 12px; }
 .sort-bar .icon-btn { width: 30px; height: 30px; font-size: 13px; }
-.feed-month-group { margin-bottom: 20px; }
+.feed-month-group { margin-bottom: 12px; }
+.feed-month-header {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: var(--cb-surface-1); border: 1px solid var(--cb-line); border-radius: var(--cb-radius-md);
+  padding: 10px 14px; margin-bottom: 8px; cursor: pointer; text-align: left;
+}
+.feed-month-header:hover { border-color: var(--cb-line-2); }
+.feed-month-chevron { color: var(--cb-ink-dim); font-size: 10px; width: 10px; }
 .feed-month-label {
-  font-family: var(--cb-font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--cb-ink-dim); margin-bottom: 8px;
+  font-family: var(--cb-font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--cb-ink);
+}
+.feed-month-meta { font-size: 11px; color: var(--cb-ink-dim); margin-left: auto; }
+.feed-show-more {
+  display: block; width: 100%; margin-top: 8px; padding: 8px; font-size: 10px;
+  letter-spacing: 0.08em; text-align: center; color: var(--cb-ink-dim);
 }
 .payment-form .cb-btn { padding: 6px 10px; font-size: 10px; }
 
