@@ -76,7 +76,7 @@ export default function Expenses({ uid }) {
                                 paid={!!entry?.paid}
                                 hasValue={!!entry}
                                 onCommit={(amt) => setEntry(c.id, m, amt)}
-                                onTogglePaid={() => setPaid(c.id, m, !entry?.paid)}
+                                onSetPaid={(isPaid) => setPaid(c.id, m, isPaid)}
                               />
                             </td>
                           )
@@ -112,7 +112,7 @@ export default function Expenses({ uid }) {
   )
 }
 
-function EditableCell({ value, paid, hasValue, onCommit, onTogglePaid }) {
+function EditableCell({ value, paid, hasValue, onCommit, onSetPaid }) {
   const [text, setText] = useState(value != null ? String(value) : '')
 
   useEffect(() => {
@@ -134,11 +134,14 @@ function EditableCell({ value, paid, hasValue, onCommit, onTogglePaid }) {
         onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
       />
       {hasValue && (
-        <span
-          className={`paid-dot${paid ? ' is-paid' : ''}`}
-          onClick={onTogglePaid}
-          role="button" aria-label={paid ? 'Mark unpaid' : 'Mark paid'}
-        />
+        <select
+          className={`paid-select ${paid ? 'is-paid' : 'is-unpaid'}`}
+          value={paid ? 'paid' : 'unpaid'}
+          onChange={(e) => onSetPaid(e.target.value === 'paid')}
+        >
+          <option value="unpaid" style={{ background: 'var(--cb-surface-2)', color: '#ff9f4a' }}>UNPAID</option>
+          <option value="paid" style={{ background: 'var(--cb-surface-2)', color: 'var(--cb-mint)' }}>PAID</option>
+        </select>
       )}
     </div>
   )
