@@ -1,18 +1,49 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { collection, getDocs, addDoc } from 'firebase/firestore'
+import { db } from './firebase'
 import { useExpenseEntries } from './useExpenseEntries'
 import { useCategories } from './useCategories'
 import { useCategoryGroups } from './useCategoryGroups'
 import { DEFAULT_EXPENSE_CATEGORIES } from './categories'
-import { monthRange, monthLabel, resolveRange } from './months'
+import { monthLabel, currentYearToDate, currentMonth } from './months'
+import CategoryManagerModal from './CategoryManagerModal.jsx'
 
 export default function Expenses({ uid }) {
   const { items, loading, setEntry, setPaid } = useExpenseEntries(uid)
-  const { items: categories, add: addSubCategory } = useCategories(uid, 'expenseCategories', DEFAULT_EXPENSE_CATEGORIES)
-  const { items: categoryGroups, add: addCategoryGroup } = useCategoryGroups(uid)
-  const [range, setRange] = useState('6M')
+  const categories = useCategories(uid, 'expenseCategories', DEFAULT_EXPENSE_CATEGORIES)
+  const categoryGroups = useCategoryGroups(uid)
+  const [hiddenMonths, setHiddenMonths] = useState(() => new Set())
+  const [managerOpen, setManagerOpen] = useState(false)
+  const backfillRan = useRef(false)
 
-  const { from, to } = resolveRange(range)
-  const months = useMemo(() => monthRange(from, to), [from, to])
+  const allMonths = useMemo(() => currentYearToDate(), [])
+  const thisMonth = currentMonth()
+  const months = allMonths.filter((m) => !hiddenMonths.has(m))
+
+  // One-time backfill: categories created before expenseCategoryGroups
+  // existed only had a free-text `.group` string, no real group doc — give
+  // each of those a real (and now reorderable) doc. Uses a direct one-shot
+  // getDocs read rather than the live hooks' `items`, because Firestore can
+  // deliver an empty/incomplete cache snapshot before the authoritative one
+  // (bit us once already with Credit Cards' composite-index query) — trusting
+  // that transient state here would create duplicate group docs.
+  useEffect(() => {
+    if (!uid || backfillRan.current) return
+    backfillRan.current = true
+    ;(async () => {
+      const [catsSnap, groupsSnap] = await Promise.all([
+        getDocs(collection(db, 'users', uid, 'expenseCategories')),
+        getDocs(collection(db, 'users', uid, 'expenseCategoryGroups')),
+      ])
+      const existingNames = new Set(groupsSnap.docs.map((d) => d.data().name))
+      const neededNames = [...new Set(catsSnap.docs.map((d) => d.data().group).filter(Boolean))]
+      const missing = neededNames.filter((n) => !existingNames.has(n))
+      let order = groupsSnap.size
+      for (const name of missing) {
+        await addDoc(collection(db, 'users', uid, 'expenseCategoryGroups'), { name, order: order++ })
+      }
+    })()
+  }, [uid])
 
   const entryByKey = useMemo(() => {
     const map = new Map()
@@ -21,30 +52,44 @@ export default function Expenses({ uid }) {
   }, [items])
 
   // Categories (UTILITIES & FEES, LOANS, ...) → their sub-categories (rows).
-  // Explicit categoryGroups docs seed the section even with zero rows yet;
-  // sub-categories add themselves under a matching or new section.
-  const groups = categoryGroups.map((g) => ({ name: g.name, cats: [] }))
-  for (const c of categories) {
+  const groups = categoryGroups.items.map((g) => ({ name: g.name, cats: [] }))
+  for (const c of categories.items) {
     const key = c.group || 'Other'
     let g = groups.find((g) => g.name === key)
     if (!g) { g = { name: key, cats: [] }; groups.push(g) }
     g.cats.push(c)
   }
 
-  const monthTotals = months.map((m) => categories.reduce((s, c) => s + (entryByKey.get(`${c.id}_${m}`)?.amount || 0), 0))
+  const monthTotals = months.map((m) => categories.items.reduce((s, c) => s + (entryByKey.get(`${c.id}_${m}`)?.amount || 0), 0))
   const grandTotal = monthTotals.reduce((a, b) => a + b, 0)
+
+  function toggleMonth(m) {
+    setHiddenMonths((prev) => {
+      const next = new Set(prev)
+      next.has(m) ? next.delete(m) : next.add(m)
+      return next
+    })
+  }
 
   return (
     <section>
       <h2 className="section-title">Expenses</h2>
 
-      <div className="range-bar">
-        {['3M', '6M', '12M', 'YTD'].map((r) => (
-          <button key={r} className={`range-chip${range === r ? ' on' : ''}`} onClick={() => setRange(r)}>{r}</button>
+      <div className="month-toggle-bar">
+        {allMonths.map((m) => (
+          <button
+            key={m}
+            className={`month-toggle-chip${hiddenMonths.has(m) ? ' is-hidden' : ''}`}
+            disabled={m === thisMonth}
+            onClick={() => toggleMonth(m)}
+            title={m === thisMonth ? 'Current month is always shown' : hiddenMonths.has(m) ? 'Show this month' : 'Hide this month'}
+          >
+            {monthLabel(m)}
+          </button>
         ))}
       </div>
 
-      {loading ? <p className="dim">Loading…</p> : (
+      {loading || categories.loading || categoryGroups.loading ? <p className="dim">Loading…</p> : (
         <div className="grid-wrap">
           <table className="grid-table">
             <thead>
@@ -86,18 +131,8 @@ export default function Expenses({ uid }) {
                       </tr>
                     )
                   })}
-                  <tr className="grid-add-row">
-                    <td colSpan={months.length + 3}>
-                      <AddRow placeholder="Add sub-category" onAdd={(name) => addSubCategory({ name, group: g.name === 'Other' ? null : g.name })} />
-                    </td>
-                  </tr>
                 </Fragment>
               ))}
-              <tr className="grid-add-row grid-add-group-row">
-                <td colSpan={months.length + 3}>
-                  <AddRow placeholder="Add category" onAdd={(name) => addCategoryGroup({ name })} />
-                </td>
-              </tr>
               <tr className="grid-total-row">
                 <td>Total</td>
                 {monthTotals.map((v, i) => <td key={i}>{v.toFixed(2)}</td>)}
@@ -107,6 +142,14 @@ export default function Expenses({ uid }) {
             </tbody>
           </table>
         </div>
+      )}
+
+      <button className="fab" onClick={() => setManagerOpen(true)} title="Add or arrange categories">+</button>
+      {managerOpen && (
+        <CategoryManagerModal
+          categoryGroups={categoryGroups} categories={categories}
+          onClose={() => setManagerOpen(false)}
+        />
       )}
     </section>
   )
@@ -135,31 +178,13 @@ function EditableCell({ value, paid, hasValue, onCommit, onTogglePaid }) {
         onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
       />
       {hasValue && (
-        <span
-          className={`paid-dot${paid ? ' is-paid' : ''}`}
-          onClick={onTogglePaid}
-          role="button" aria-label={paid ? 'Mark unpaid' : 'Mark paid'}
+        <input
+          type="checkbox" className="paid-checkbox"
+          checked={paid}
+          onChange={onTogglePaid}
+          aria-label={paid ? 'Mark unpaid' : 'Mark paid'}
         />
       )}
     </div>
-  )
-}
-
-function AddRow({ placeholder, onAdd }) {
-  const [name, setName] = useState('')
-
-  function submit(e) {
-    e.preventDefault()
-    if (!name.trim()) return
-    onAdd(name.trim())
-    setName('')
-  }
-
-  return (
-    <form onSubmit={submit} className="grid-add-form">
-      <span className="grid-add-plus">+</span>
-      <input placeholder={placeholder} value={name} onChange={(e) => setName(e.target.value)} />
-      <button type="submit" className="cb-btn">ADD</button>
-    </form>
   )
 }

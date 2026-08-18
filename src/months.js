@@ -31,3 +31,9 @@ export function resolveRange(range) {
   const from = range === 'YTD' ? `${to.slice(0, 4)}-01` : addMonths(to, -(RANGE_MONTHS[range] - 1))
   return { from, to }
 }
+
+// January through the current month, current year — never a future month.
+export function currentYearToDate() {
+  const to = currentMonth()
+  return monthRange(`${to.slice(0, 4)}-01`, to)
+}
