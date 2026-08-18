@@ -179,10 +179,12 @@ select {
 }
 .grid-table td:first-child, .grid-table th:first-child { text-align: left; position: sticky; left: 0; background: var(--cb-surface-1); }
 .grid-row-cat { padding-left: 22px !important; color: var(--cb-ink); font-size: 12.5px; font-weight: 600; }
+.grid-row-cat.cat-colored { border-left: 3px solid color-mix(in srgb, var(--cat-color) 45%, transparent); }
 .grid-group-row td {
-  background: var(--cb-surface-2); font-weight: 700; color: var(--cb-ink); text-align: left;
-  letter-spacing: 0.08em; text-transform: uppercase; font-size: 13px; border-left: 3px solid var(--cb-mint);
+  background: var(--cb-surface-2); font-weight: 700; text-align: left;
+  letter-spacing: 0.08em; text-transform: uppercase; font-size: 13px;
 }
+.grid-group-row.cat-colored td { border-left: 3px solid var(--cat-color); color: var(--cat-color); }
 .grid-total-row td { background: var(--cb-surface-2); font-weight: 700; color: var(--cb-ink); border-top: 2px solid var(--cb-line-2); }
 .grid-table .col-total { color: var(--cb-ink); font-weight: 700; }
 .grid-table .col-avg { color: var(--cb-ink-dim); }

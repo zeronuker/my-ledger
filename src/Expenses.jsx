@@ -8,6 +8,11 @@ import { DEFAULT_EXPENSE_CATEGORIES } from './categories'
 import { monthLabel, currentYearToDate, currentMonth } from './months'
 import CategoryManagerModal from './CategoryManagerModal.jsx'
 
+// Fixed palette (not the user's single customizable accent — the point here
+// is several distinct hues, one per category) cycling if there are more
+// categories than colors.
+const CATEGORY_COLORS = ['#3FE0C5', '#3B8DFF', '#5B6BFF', '#FFB37C', '#10d983', '#f43f5e']
+
 export default function Expenses({ uid }) {
   const { items, loading, setEntry, setPaid } = useExpenseEntries(uid)
   const categories = useCategories(uid, 'expenseCategories', DEFAULT_EXPENSE_CATEGORIES)
@@ -101,37 +106,11 @@ export default function Expenses({ uid }) {
               </tr>
             </thead>
             <tbody>
-              {groups.map((g) => (
-                <Fragment key={g.name}>
-                  <tr className="grid-group-row">
-                    <td colSpan={months.length + 3}>{g.name}</td>
-                  </tr>
-                  {g.cats.map((c) => {
-                    const vals = months.map((m) => entryByKey.get(`${c.id}_${m}`)?.amount || 0)
-                    const total = vals.reduce((a, b) => a + b, 0)
-                    return (
-                      <tr key={c.id}>
-                        <td className="grid-row-cat">{c.name}</td>
-                        {months.map((m) => {
-                          const entry = entryByKey.get(`${c.id}_${m}`)
-                          return (
-                            <td key={m}>
-                              <EditableCell
-                                value={entry?.amount}
-                                paid={!!entry?.paid}
-                                hasValue={!!entry}
-                                onCommit={(amt) => setEntry(c.id, m, amt)}
-                                onTogglePaid={() => setPaid(c.id, m, !entry?.paid)}
-                              />
-                            </td>
-                          )
-                        })}
-                        <td className="col-total">{total.toFixed(2)}</td>
-                        <td className="col-avg">{(total / months.length).toFixed(2)}</td>
-                      </tr>
-                    )
-                  })}
-                </Fragment>
+              {groups.map((g, gi) => (
+                <CategoryGroupRows
+                  key={g.name} group={g} color={CATEGORY_COLORS[gi % CATEGORY_COLORS.length]}
+                  months={months} entryByKey={entryByKey} setEntry={setEntry} setPaid={setPaid}
+                />
               ))}
               <tr className="grid-total-row">
                 <td>Total</td>
@@ -152,6 +131,42 @@ export default function Expenses({ uid }) {
         />
       )}
     </section>
+  )
+}
+
+function CategoryGroupRows({ group, color, months, entryByKey, setEntry, setPaid }) {
+  const catStyle = { '--cat-color': color }
+  return (
+    <Fragment>
+      <tr className="grid-group-row cat-colored" style={catStyle}>
+        <td colSpan={months.length + 3}>{group.name}</td>
+      </tr>
+      {group.cats.map((c) => {
+        const vals = months.map((m) => entryByKey.get(`${c.id}_${m}`)?.amount || 0)
+        const total = vals.reduce((a, b) => a + b, 0)
+        return (
+          <tr key={c.id} style={catStyle}>
+            <td className="grid-row-cat cat-colored">{c.name}</td>
+            {months.map((m) => {
+              const entry = entryByKey.get(`${c.id}_${m}`)
+              return (
+                <td key={m}>
+                  <EditableCell
+                    value={entry?.amount}
+                    paid={!!entry?.paid}
+                    hasValue={!!entry}
+                    onCommit={(amt) => setEntry(c.id, m, amt)}
+                    onTogglePaid={() => setPaid(c.id, m, !entry?.paid)}
+                  />
+                </td>
+              )
+            })}
+            <td className="col-total">{total.toFixed(2)}</td>
+            <td className="col-avg">{(total / months.length).toFixed(2)}</td>
+          </tr>
+        )
+      })}
+    </Fragment>
   )
 }
 
