@@ -260,10 +260,7 @@ function TxnCard({ txn, currency, category, dotColor, onAddPayment, onRemove }) 
         <div className="feed-desc">{txn.description}</div>
         <div className="feed-cat">{category?.name || 'No category'} · {txn.date}</div>
         {isPartial && (
-          <>
-            <div className="progress-track"><div className="progress-fill" style={{ width: `${Math.round(paid / txn.amount * 100)}%` }} /></div>
-            <div className="feed-remaining">Paid {currency} {paid.toFixed(2)} · Balance {currency} {remaining.toFixed(2)}</div>
-          </>
+          <div className="progress-track"><div className="progress-fill" style={{ width: `${Math.round(paid / txn.amount * 100)}%` }} /></div>
         )}
         {paid > 0 && (
           <div className="payment-history">
@@ -282,7 +279,14 @@ function TxnCard({ txn, currency, category, dotColor, onAddPayment, onRemove }) 
         )}
       </div>
       <span className={`pill ${status}`}>{status[0].toUpperCase() + status.slice(1)}</span>
-      <span className="feed-amt">{currency} {Number(txn.amount).toFixed(2)}</span>
+      {isPaid ? (
+        <span className="feed-amt">{currency} {Number(txn.amount).toFixed(2)}</span>
+      ) : (
+        <div className="feed-amt-block">
+          <span className="feed-amt">{currency} {Number(txn.amount).toFixed(2)}</span>
+          <span className="feed-breakdown">Paid {paid.toFixed(2)} · <span className="bal">Bal {remaining.toFixed(2)}</span></span>
+        </div>
+      )}
       <button className="cb-btn cb-btn--danger" onClick={onRemove}>×</button>
     </div>
   )
