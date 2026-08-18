@@ -146,7 +146,7 @@ function CategoryGroupRows({ group, color, months, entryByKey, setEntry, setPaid
         const total = vals.reduce((a, b) => a + b, 0)
         return (
           <tr key={c.id} style={catStyle}>
-            <td className="grid-row-cat cat-colored">{c.name}</td>
+            <td className="grid-row-cat"><span className="cat-colored">{c.name}</span></td>
             {months.map((m) => {
               const entry = entryByKey.get(`${c.id}_${m}`)
               return (
