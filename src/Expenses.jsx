@@ -4,13 +4,17 @@ import { useCategories } from './useCategories'
 import { useCategoryGroups } from './useCategoryGroups'
 import { useLedgerData } from './LedgerDataContext'
 import { DEFAULT_EXPENSE_CATEGORIES } from './categories'
-import { monthLabel, monthRange, currentMonth } from './months'
+import { monthLabel, monthNameFull, monthRange, currentMonth } from './months'
 import CategoryManagerModal from './CategoryManagerModal.jsx'
 
 // Fixed palette (not the user's single customizable accent — the point here
 // is several distinct hues, one per category) cycling if there are more
 // categories than colors.
 const CATEGORY_COLORS = ['#3FE0C5', '#3B8DFF', '#5B6BFF', '#FFB37C', '#10d983', '#f43f5e']
+
+function formatMYR(n) {
+  return `RM ${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
 
 export default function Expenses({ uid }) {
   const { items, loading, setEntry, setPaid } = useExpenseEntries(uid)
@@ -88,7 +92,7 @@ export default function Expenses({ uid }) {
           <table className="grid-table">
             <thead>
               <tr>
-                <th>Category</th>
+                <th></th>
                 {allMonths.map((m) => {
                   if (hiddenSet.has(m)) {
                     return (
@@ -101,32 +105,30 @@ export default function Expenses({ uid }) {
                   return (
                     <th
                       key={m}
-                      className={`${m === thisMonth ? 'th-current' : ''}${hideable ? ' th-hideable' : ''}`}
+                      className={`${m === thisMonth ? 'th-current col-current' : ''}${hideable ? ' th-hideable' : ''}`}
                       onClick={hideable ? () => toggleMonth(m) : undefined}
                       title={hideable ? 'Hide this month' : undefined}
                     >
-                      {monthLabel(m)}
+                      {monthNameFull(m)}
                     </th>
                   )
                 })}
                 <th className="col-total">Total</th>
-                <th className="col-avg">Avg</th>
               </tr>
             </thead>
             <tbody>
               {groups.map((g, gi) => (
                 <CategoryGroupRows
                   key={g.name} group={g} color={CATEGORY_COLORS[gi % CATEGORY_COLORS.length]}
-                  months={allMonths} hiddenSet={hiddenSet} entryByKey={entryByKey} setEntry={setEntry} setPaid={setPaid}
+                  months={allMonths} thisMonth={thisMonth} hiddenSet={hiddenSet} entryByKey={entryByKey} setEntry={setEntry} setPaid={setPaid}
                 />
               ))}
               <tr className="grid-total-row">
                 <td>Total</td>
                 {allMonths.map((m, i) => (
-                  hiddenSet.has(m) ? <td key={m} className="td-stub" /> : <td key={m}>{monthTotals[i].toFixed(2)}</td>
+                  hiddenSet.has(m) ? <td key={m} className="td-stub" /> : <td key={m} className={m === thisMonth ? 'col-current' : ''}>{formatMYR(monthTotals[i])}</td>
                 ))}
-                <td className="col-total">{grandTotal.toFixed(2)}</td>
-                <td className="col-avg">{(grandTotal / allMonths.length).toFixed(2)}</td>
+                <td className="col-total">{formatMYR(grandTotal)}</td>
               </tr>
             </tbody>
           </table>
@@ -144,24 +146,25 @@ export default function Expenses({ uid }) {
   )
 }
 
-function CategoryGroupRows({ group, color, months, hiddenSet, entryByKey, setEntry, setPaid }) {
+function CategoryGroupRows({ group, color, months, thisMonth, hiddenSet, entryByKey, setEntry, setPaid }) {
   const catStyle = { '--cat-color': color }
   return (
     <Fragment>
       <tr className="grid-group-row cat-colored" style={catStyle}>
-        <td colSpan={months.length + 3}>{group.name}</td>
+        <td>{group.name}</td>
+        <td colSpan={months.length + 1}></td>
       </tr>
-      {group.cats.map((c) => {
+      {group.cats.map((c, ci) => {
         const vals = months.map((m) => entryByKey.get(`${c.id}_${m}`)?.amount || 0)
         const total = vals.reduce((a, b) => a + b, 0)
         return (
-          <tr key={c.id} style={catStyle}>
+          <tr key={c.id} style={catStyle} className={ci % 2 === 0 ? 'row-even' : 'row-odd'}>
             <td className="grid-row-cat"><span className="cat-colored">{c.name}</span></td>
             {months.map((m) => {
               if (hiddenSet.has(m)) return <td key={m} className="td-stub" />
               const entry = entryByKey.get(`${c.id}_${m}`)
               return (
-                <td key={m}>
+                <td key={m} className={m === thisMonth ? 'col-current' : ''}>
                   <EditableCell
                     value={entry?.amount}
                     paid={!!entry?.paid}
@@ -172,8 +175,7 @@ function CategoryGroupRows({ group, color, months, hiddenSet, entryByKey, setEnt
                 </td>
               )
             })}
-            <td className="col-total">{total.toFixed(2)}</td>
-            <td className="col-avg">{(total / months.length).toFixed(2)}</td>
+            <td className="col-total">{formatMYR(total)}</td>
           </tr>
         )
       })}
@@ -183,22 +185,28 @@ function CategoryGroupRows({ group, color, months, hiddenSet, entryByKey, setEnt
 
 function EditableCell({ value, paid, hasValue, onCommit, onTogglePaid }) {
   const [text, setText] = useState(value != null ? String(value) : '')
+  const [focused, setFocused] = useState(false)
 
   useEffect(() => {
-    setText(value != null ? String(value) : '')
-  }, [value])
+    if (!focused) setText(value != null ? String(value) : '')
+  }, [value, focused])
 
   function commit() {
     const n = parseFloat(text)
     onCommit(Number.isFinite(n) ? n : 0)
+    setFocused(false)
   }
+
+  // Raw digits while editing (easy to type); formatted RM display once blurred.
+  const display = focused || !hasValue ? text : formatMYR(value)
 
   return (
     <div className="cell-inner">
       <input
         type="text" inputMode="decimal" placeholder="—"
         className={`grid-cell-input${hasValue ? (paid ? ' is-paid' : ' is-unpaid') : ''}`}
-        value={text}
+        value={display}
+        onFocus={() => { setFocused(true); setText(value != null ? String(value) : '') }}
         onChange={(e) => setText(e.target.value.replace(/[^0-9.]/g, ''))}
         onBlur={commit}
         onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}

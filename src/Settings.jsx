@@ -7,8 +7,6 @@ import { auth } from './firebase'
 import { clearAllCloudData } from './cloudSync'
 import { clearLocalData } from './localStore'
 import { ACCENT_PRESETS, FONT_CHOICES, DEFAULT_SETTINGS } from './theme'
-import { useCategories } from './useCategories'
-import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_CARD_CATEGORIES } from './categories'
 import { SmSectionHead, SmField, SmRow, SmSegmented, SmSlider, SmCloseIcon } from './SettingsControls.jsx'
 import { CHANGELOG } from './changelog'
 
@@ -116,7 +114,7 @@ export default function Settings({ uid, settings, update, pwaUpdate, onPreview, 
 
         <div className="sm-body">
           {tab === 'appearance' && <AppearanceTab d={draft} upd={upd} />}
-          {tab === 'preferences' && <PreferencesTab uid={uid} />}
+          {tab === 'preferences' && <PreferencesTab />}
           {tab === 'account' && <AccountTab uid={uid} onClose={handleClose} />}
           {tab === 'about' && <AboutTab pwaUpdate={pwaUpdate} />}
         </div>
@@ -223,62 +221,8 @@ function AppearanceTab({ d, upd }) {
 // ════════════════════════════════════════════════════════════════════
 //  PREFERENCES TAB
 // ════════════════════════════════════════════════════════════════════
-function PreferencesTab({ uid }) {
-  const expense = useCategories(uid, 'expenseCategories', DEFAULT_EXPENSE_CATEGORIES)
-  const card = useCategories(uid, 'cardCategories', DEFAULT_CARD_CATEGORIES)
-
-  return (
-    <div className="sm-tab-content">
-      <CategoryList
-        title="Expense sub-categories"
-        hint="// grouped under a category in the Expenses grid"
-        items={expense.items} onAdd={expense.add} onRemove={expense.remove}
-        withGroup
-      />
-      <CategoryList
-        title="Credit card categories"
-        hint="// tags each card transaction"
-        items={card.items} onAdd={card.add} onRemove={card.remove}
-      />
-    </div>
-  )
-}
-
-function CategoryList({ title, hint, items, onAdd, onRemove, withGroup }) {
-  const [name, setName] = useState('')
-  const [group, setGroup] = useState('')
-
-  function submit(e) {
-    e.preventDefault()
-    if (!name.trim()) return
-    onAdd(withGroup ? { name: name.trim(), group: group.trim() || null } : { name: name.trim() })
-    setName('')
-    setGroup('')
-  }
-
-  return (
-    <>
-      <SmSectionHead title={title} hint={hint} />
-      <SmRow>
-        <div className="sm-cat-list">
-          {items.map((c) => (
-            <span key={c.id} className="sm-cat-pill">
-              {c.name}{withGroup && c.group ? <span className="sm-cat-pill-group"> · {c.group}</span> : ''}
-              <span className="sm-cat-pill-x" onClick={() => onRemove(c.id)}>×</span>
-            </span>
-          ))}
-          {items.length === 0 && <span className="sm-field-hint">None yet.</span>}
-        </div>
-        <form onSubmit={submit} className="sm-cat-form">
-          <input className="sm-input" placeholder="New category" value={name} onChange={(e) => setName(e.target.value)} />
-          {withGroup && (
-            <input className="sm-input" placeholder="Group (optional)" value={group} onChange={(e) => setGroup(e.target.value)} />
-          )}
-          <button type="submit" className="sm-cf-add">+ Add</button>
-        </form>
-      </SmRow>
-    </>
-  )
+function PreferencesTab() {
+  return <div className="sm-tab-content" />
 }
 
 // ════════════════════════════════════════════════════════════════════

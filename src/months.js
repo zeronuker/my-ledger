@@ -22,6 +22,12 @@ export function monthLabel(monthStr) {
   return new Date(y, m - 1, 1).toLocaleString(undefined, { month: 'short', year: 'numeric' })
 }
 
+// Full month name, no year — for column headers wide enough to spell it out.
+export function monthNameFull(monthStr) {
+  const [y, m] = monthStr.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleString(undefined, { month: 'long' })
+}
+
 export const RANGE_MONTHS = { '3M': 3, '6M': 6, '12M': 12 }
 
 // Resolves a range chip ('3M'|'6M'|'12M'|'YTD') to a [from, to] month pair

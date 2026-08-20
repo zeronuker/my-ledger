@@ -99,6 +99,12 @@ function ArrangeTab({ categoryGroups, categories }) {
               <span className="arrange-arrows">
                 <button disabled={gi === 0} onClick={() => moveGroup(gi, -1)}>&uarr;</button>
                 <button disabled={gi === categoryGroups.items.length - 1} onClick={() => moveGroup(gi, 1)}>&darr;</button>
+                <button
+                  className="arrange-delete"
+                  disabled={subs.length > 0}
+                  title={subs.length > 0 ? 'Move or delete its sub-categories first' : 'Delete category'}
+                  onClick={() => categoryGroups.remove(g.id)}
+                >&times;</button>
               </span>
             </div>
             {subs.map((c, ci) => (
@@ -107,6 +113,7 @@ function ArrangeTab({ categoryGroups, categories }) {
                 <span className="arrange-arrows">
                   <button disabled={ci === 0} onClick={() => moveSub(g.name, subs, ci, -1)}>&uarr;</button>
                   <button disabled={ci === subs.length - 1} onClick={() => moveSub(g.name, subs, ci, 1)}>&darr;</button>
+                  <button className="arrange-delete" title="Delete sub-category" onClick={() => categories.remove(c.id)}>&times;</button>
                 </span>
               </div>
             ))}
