@@ -13,7 +13,7 @@ import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_CARD_CATEGORIES } from './categorie
 const TABS = ['Appearance', 'Preferences', 'Account', 'About']
 const APP_VERSION = '0.1.0'
 
-export default function Settings({ uid, settings, update, onClose }) {
+export default function Settings({ uid, settings, update, pwaUpdate, onClose }) {
   const [tab, setTab] = useState('Appearance')
 
   return (
@@ -32,7 +32,7 @@ export default function Settings({ uid, settings, update, onClose }) {
           {tab === 'Appearance' && <AppearanceTab settings={settings} update={update} />}
           {tab === 'Preferences' && <PreferencesTab uid={uid} />}
           {tab === 'Account' && <AccountTab uid={uid} onClose={onClose} />}
-          {tab === 'About' && <AboutTab />}
+          {tab === 'About' && <AboutTab pwaUpdate={pwaUpdate} />}
         </div>
       </div>
     </div>
@@ -227,7 +227,9 @@ function AccountTab({ uid, onClose }) {
   )
 }
 
-function AboutTab() {
+function AboutTab({ pwaUpdate }) {
+  const { current, needRefresh, updateServiceWorker, checkForUpdate, checkingUpdate, updateChecked } = pwaUpdate
+
   return (
     <>
       <div className="setting-row">
@@ -237,6 +239,26 @@ function AboutTab() {
       <div className="setting-row">
         <span className="setting-label">Part of ClaudeBorne</span>
         <span className="hint">Shares brand and visual language with eLogBook and SuperApp.</span>
+      </div>
+
+      <div className="setting-row">
+        <span className="setting-label">App update</span>
+        <span className="hint">Current build: {current.version}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {needRefresh ? (
+            <button className="cb-btn cb-btn--primary" onClick={() => updateServiceWorker(true)}>UPDATE NOW</button>
+          ) : (
+            <button className="cb-btn" onClick={checkForUpdate} disabled={checkingUpdate}>
+              {checkingUpdate ? 'CHECKING…' : 'CHECK FOR UPDATES'}
+            </button>
+          )}
+          {updateChecked && !needRefresh && (
+            <span className="hint" style={{ color: 'var(--cb-mint)' }}>✓ UP TO DATE</span>
+          )}
+          {needRefresh && !checkingUpdate && (
+            <span className="hint" style={{ color: 'var(--cb-mint)' }}>NEW VERSION AVAILABLE</span>
+          )}
+        </div>
       </div>
     </>
   )

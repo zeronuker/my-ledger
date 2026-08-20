@@ -4,6 +4,8 @@ import { auth, firebaseReady } from './firebase'
 import { useSettings } from './useSettings'
 import { LedgerDataProvider, useLedgerData } from './LedgerDataContext'
 import { makeThemeCss } from './theme'
+import { useUpdate } from '@brand/useUpdate'
+import UpdatePrompt from '@brand/UpdatePrompt'
 import Auth from './Auth.jsx'
 import Settings from './Settings.jsx'
 import Dashboard from './Dashboard.jsx'
@@ -21,8 +23,13 @@ const TABS = [
   { id: 'income', label: 'Income' },
 ]
 
+// How often to poll for a new service worker while the app stays open —
+// same cadence as eLogBook/SuperApp.
+const SW_UPDATE_INTERVAL_MS = 30 * 60 * 1000
+
 export default function App() {
   const [user, setUser] = useState(undefined) // undefined = loading, null = signed out
+  const pwaUpdate = useUpdate('ledger', SW_UPDATE_INTERVAL_MS)
 
   useEffect(() => {
     if (firebaseReady) return onAuthStateChanged(auth, setUser)
@@ -30,32 +37,42 @@ export default function App() {
 
   if (!firebaseReady) {
     return (
-      <div className="auth-screen">
-        <div className="auth-card">
-          <span className="cb-logo">
-            <span className="cb-logo__mark" aria-hidden="true" />
-            <span className="cb-logo__wordmark">CLAUDEBORNE</span>
-          </span>
-          <div className="cb-eyebrow" style={{ marginTop: 8 }}>LEDGER</div>
-          <p className="dim" style={{ textAlign: 'center', marginTop: 8 }}>
-            Firebase isn't configured yet — add your project's config to <code>.env.local</code> to sign in.
-          </p>
+      <>
+        <div className="auth-screen">
+          <div className="auth-card">
+            <span className="cb-logo">
+              <span className="cb-logo__mark" aria-hidden="true" />
+              <span className="cb-logo__wordmark">CLAUDEBORNE</span>
+            </span>
+            <div className="cb-eyebrow" style={{ marginTop: 8 }}>LEDGER</div>
+            <p className="dim" style={{ textAlign: 'center', marginTop: 8 }}>
+              Firebase isn't configured yet — add your project's config to <code>.env.local</code> to sign in.
+            </p>
+          </div>
         </div>
-      </div>
+        <UpdatePrompt ready update={pwaUpdate} />
+      </>
     )
   }
 
   if (user === undefined) return <div className="app-loading">Loading…</div>
-  if (!user) return <Auth />
+  if (!user) {
+    return (
+      <>
+        <Auth />
+        <UpdatePrompt ready update={pwaUpdate} />
+      </>
+    )
+  }
 
   return (
     <LedgerDataProvider uid={user.uid}>
-      <AuthenticatedApp uid={user.uid} />
+      <AuthenticatedApp uid={user.uid} pwaUpdate={pwaUpdate} />
     </LedgerDataProvider>
   )
 }
 
-function AuthenticatedApp({ uid }) {
+function AuthenticatedApp({ uid, pwaUpdate }) {
   const [tab, setTab] = useState('dashboard')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const { settings, update } = useSettings(uid)
@@ -94,12 +111,14 @@ function AuthenticatedApp({ uid }) {
       </div>
 
       {settingsOpen && (
-        <Settings uid={uid} settings={settings} update={update} onClose={() => setSettingsOpen(false)} />
+        <Settings uid={uid} settings={settings} update={update} pwaUpdate={pwaUpdate} onClose={() => setSettingsOpen(false)} />
       )}
 
       {conflict && (
         <SyncConflictModal onKeepLocal={resolveKeepLocal} onKeepCloud={resolveKeepCloud} />
       )}
+
+      <UpdatePrompt ready update={pwaUpdate} isBusy={syncStatus === 'syncing'} />
     </>
   )
 }
