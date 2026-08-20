@@ -8,6 +8,10 @@ import { auth } from './firebase'
 import { LoginIcon, SignupIcon, LogoutIcon, EnvelopeIcon } from './authIcons.jsx'
 import GoogleSignInButton from './GoogleSignInButton.jsx'
 import BrandBanner from '@brand/BrandBanner'
+import { CHANGELOG } from './changelog'
+
+// Single source of truth, same as Settings.jsx's APP_VERSION.
+const APP_VERSION = CHANGELOG[CHANGELOG.length - 1].v
 
 // Landing / Login / Sign up / Signed-out flow, matching eLogBook's
 // OnboardingFlow screens. VerifyEmailGate and WelcomeScreen are exported
@@ -138,7 +142,7 @@ function Landing({ goTo }) {
   return (
     <div className="auth-land">
       <div className="auth-land-logo"><BrandBanner subtitle="LEDGER" /></div>
-      <div className="auth-land-ver">eLEDGER V0.1.0 · PERSONAL FINANCE</div>
+      <div className="auth-land-ver">eLEDGER {APP_VERSION.toUpperCase()} · PERSONAL FINANCE</div>
       <div className="auth-land-tag">
         Your personal expense &amp; income tracker.<br />
         Accessible anywhere. Works offline. Sync on demand.
