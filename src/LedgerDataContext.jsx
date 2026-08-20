@@ -25,9 +25,33 @@ export function LedgerDataProvider({ uid, children }) {
   const [syncStatus, setSyncStatus] = useState('idle') // idle | syncing | synced | error
   const [lastSyncTime, setLastSyncTime] = useState(null)
   const [conflict, setConflict] = useState(null) // { cloudData, cloudUpdatedAt }
+  const [saveStatus, setSaveStatus] = useState('idle') // idle | saving | saved | fading
+  const [lastSaveTime, setLastSaveTime] = useState(null)
 
   const dataRef = useRef(data)
   useEffect(() => { dataRef.current = data }, [data])
+
+  const saveDebounceRef = useRef(null)
+  const saveFadeRef = useRef(null)
+  const saveIdleRef = useRef(null)
+
+  // Ported from eLogBook's save chip (ELogbook.jsx saveData): the actual
+  // localStorage write is already synchronous/instant — this timing is
+  // purely a visual debounce so rapid edits don't flicker the chip.
+  const flashSaved = useCallback(() => {
+    setSaveStatus('saving')
+    clearTimeout(saveDebounceRef.current)
+    clearTimeout(saveFadeRef.current)
+    clearTimeout(saveIdleRef.current)
+    saveDebounceRef.current = setTimeout(() => {
+      setLastSaveTime(new Date().toISOString())
+      setSaveStatus('saved')
+      saveFadeRef.current = setTimeout(() => {
+        setSaveStatus('fading')
+        saveIdleRef.current = setTimeout(() => setSaveStatus('idle'), 500)
+      }, 2000)
+    }, 1000)
+  }, [])
 
   const flashStatus = useCallback((status, ms) => {
     setSyncStatus(status)
@@ -147,7 +171,8 @@ export function LedgerDataProvider({ uid, children }) {
       return next
     })
     setDirty(uid, true)
-  }, [uid])
+    flashSaved()
+  }, [uid, flashSaved])
 
   const addItem = useCallback((name, itemData) => {
     const id = crypto.randomUUID()
@@ -253,6 +278,8 @@ export function LedgerDataProvider({ uid, children }) {
     isOnline,
     syncStatus,
     lastSyncTime,
+    saveStatus,
+    lastSaveTime,
     conflict,
     sync,
     resolveKeepLocal,

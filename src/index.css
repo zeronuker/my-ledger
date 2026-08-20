@@ -215,6 +215,13 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* ---- Local save chip — matches eLogBook's save-pulse exactly ---- */
+@keyframes cb-save-pulse {
+  0% { opacity: 0; text-shadow: 0 0 12px rgba(34,197,94,0.9); }
+  40% { opacity: 1; text-shadow: 0 0 8px rgba(34,197,94,0.6); }
+  100% { opacity: 1; text-shadow: none; }
+}
+
 /* ---- Settings modal ---- */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100;

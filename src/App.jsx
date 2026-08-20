@@ -13,6 +13,7 @@ import Expenses from './Expenses.jsx'
 import CreditCards from './CreditCards.jsx'
 import Income from './Income.jsx'
 import SyncStatus from './SyncStatus.jsx'
+import LocalSaveStatus from './LocalSaveStatus.jsx'
 import SyncConflictModal from './SyncConflictModal.jsx'
 import BrandBanner from '@brand/BrandBanner'
 
@@ -119,7 +120,10 @@ function AuthenticatedApp({ uid, pwaUpdate }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [previewSettings, setPreviewSettings] = useState(null)
   const { settings, update } = useSettings(uid)
-  const { isOnline, syncStatus, lastSyncTime, conflict, sync, resolveKeepLocal, resolveKeepCloud } = useLedgerData()
+  const {
+    isOnline, syncStatus, lastSyncTime, saveStatus, lastSaveTime,
+    conflict, sync, resolveKeepLocal, resolveKeepCloud,
+  } = useLedgerData()
 
   return (
     <>
@@ -128,6 +132,7 @@ function AuthenticatedApp({ uid, pwaUpdate }) {
         <header className="app-header">
           <BrandBanner subtitle="LEDGER" />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <LocalSaveStatus saveStatus={saveStatus} lastSaveTime={lastSaveTime} />
             <SyncStatus isOnline={isOnline} syncStatus={syncStatus} lastSyncTime={lastSyncTime} onSync={sync} />
             <button className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>⚙</button>
           </div>
