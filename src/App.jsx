@@ -115,7 +115,12 @@ function AuthenticatedApp({ uid, pwaUpdate }) {
       )}
 
       {conflict && (
-        <SyncConflictModal onKeepLocal={resolveKeepLocal} onKeepCloud={resolveKeepCloud} />
+        <SyncConflictModal
+          lastSyncTime={lastSyncTime}
+          cloudUpdatedAt={conflict.cloudUpdatedAt}
+          onKeepLocal={resolveKeepLocal}
+          onKeepCloud={resolveKeepCloud}
+        />
       )}
 
       <UpdatePrompt ready update={pwaUpdate} isBusy={syncStatus === 'syncing'} />
