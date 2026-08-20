@@ -43,6 +43,17 @@ export function SignupIcon({ size = 40 }) {
   )
 }
 
+export function EnvelopeIcon({ size = 40 }) {
+  const id = useId()
+  return (
+    <svg width={size} height={size * 56 / 64} viewBox="0 0 64 56" aria-hidden="true">
+      <defs><linearGradient id={id} gradientUnits="userSpaceOnUse" x1="6" y1="8" x2="58" y2="50">{GRAD_STOPS}</linearGradient></defs>
+      <polygon points="12,8 52,8 58,14 58,44 52,50 12,50 6,44 6,14" fill="none" stroke={`url(#${id})`} strokeWidth="5" strokeLinejoin="miter" />
+      <polyline points="10,16 32,32 54,16" fill="none" stroke={`url(#${id})`} strokeWidth="5" strokeLinejoin="miter" strokeLinecap="square" />
+    </svg>
+  )
+}
+
 export function LogoutIcon({ size = 64 }) {
   const id = useId()
   return (

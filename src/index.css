@@ -125,12 +125,61 @@ body {
 .auth-lbtn-sub { font-size: 12px; color: var(--cb-ink-2); letter-spacing: 0.02em; }
 .auth-land-legal { font-size: 11px; color: var(--cb-ink-dim); letter-spacing: 0.02em; line-height: 1.65; }
 
-/* Signed out */
+/* Signed out / Welcome (done) */
 .auth-done { text-align: center; max-width: 380px; width: 100%; }
 .auth-done-icon { display: flex; justify-content: center; margin-bottom: 18px; }
 .auth-done-ttl { font-size: 22px; font-weight: 700; color: var(--cb-ink-2); letter-spacing: 0.1em; margin-bottom: 8px; }
 .auth-done-sub { font-size: 13px; color: var(--cb-ink-2); letter-spacing: 0.02em; margin-bottom: 20px; }
 .auth-done-note { font-size: 10px; color: var(--cb-ink-dim); letter-spacing: 0.08em; }
+
+/* Password requirements checklist */
+.auth-pwd-wrapper { position: relative; margin-bottom: 14px; }
+.auth-pwd-indicator { position: absolute; right: 12px; top: 35px; font-size: 16px; }
+.auth-pwd-valid { color: #22c55e; }
+.auth-pwd-invalid { color: #ef4444; }
+.auth-pwd-requirements {
+  background: color-mix(in srgb, var(--cb-mint) 4%, transparent);
+  border: 1px solid var(--cb-line-2);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  font-size: 10px;
+}
+.auth-pwd-req-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; color: var(--cb-ink-dim); }
+.auth-pwd-req-item:last-child { margin-bottom: 0; }
+.auth-pwd-req-check {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1px solid var(--cb-line-2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; flex-shrink: 0;
+}
+.auth-pwd-req-check.done { background: #22c55e; border-color: #22c55e; color: var(--cb-surface-0); }
+.auth-pwd-mismatch { font-size: 11px; color: #ef4444; margin-top: 8px; letter-spacing: 0.02em; }
+
+/* OR divider + Google button */
+.auth-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0 12px; }
+.auth-divider-line { flex: 1; height: 1px; background: var(--cb-line); }
+.auth-divider-text { font-size: 10px; color: var(--cb-ink-dim); letter-spacing: 0.12em; }
+.auth-btn-google {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--cb-surface-2); border: 1px solid var(--cb-line-2); color: var(--cb-ink);
+  font-family: var(--cb-font-mono); font-size: 12px; letter-spacing: 0.1em;
+  padding: 13px; border-radius: 5px; cursor: pointer;
+  transition: border-color 0.15s;
+}
+.auth-btn-google:hover { border-color: #e8453c; }
+.auth-btn-google:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Email verification card */
+.auth-email-box {
+  background: var(--cb-surface-2); border: 1px solid var(--cb-line-2); border-radius: 4px;
+  padding: 20px; margin: 20px 0; text-align: center;
+}
+.auth-email-icon { display: flex; justify-content: center; margin-bottom: 12px; }
+.auth-email-addr { font-size: 13px; color: var(--cb-ink); font-weight: 700; margin-bottom: 6px; }
+.auth-email-desc { font-size: 11px; color: var(--cb-ink-dim); line-height: 1.6; margin-bottom: 6px; }
+.auth-email-help { font-size: 11px; color: var(--cb-ink-dim); text-align: center; margin-bottom: 18px; line-height: 1.6; }
+.auth-email-help-link { color: var(--cb-mint); cursor: pointer; text-decoration: underline; }
 
 /* ---- App shell ---- */
 .app-shell {

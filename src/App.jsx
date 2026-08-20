@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth, firebaseReady } from './firebase'
 import { useSettings } from './useSettings'
@@ -6,7 +6,7 @@ import { LedgerDataProvider, useLedgerData } from './LedgerDataContext'
 import { makeThemeCss } from './theme'
 import { useUpdate } from '@brand/useUpdate'
 import UpdatePrompt from '@brand/UpdatePrompt'
-import Auth from './Auth.jsx'
+import Auth, { VerifyEmailGate, WelcomeScreen, needsVerifyKey } from './Auth.jsx'
 import Settings from './Settings.jsx'
 import Dashboard from './Dashboard.jsx'
 import Expenses from './Expenses.jsx'
@@ -30,8 +30,14 @@ const SW_UPDATE_INTERVAL_MS = 30 * 60 * 1000
 export default function App() {
   const [user, setUser] = useState(undefined) // undefined = loading, null = signed out
   const [justSignedOut, setJustSignedOut] = useState(false)
+  const [justVerified, setJustVerified] = useState(false)
   const prevUserRef = useRef(undefined)
   const pwaUpdate = useUpdate('ledger', SW_UPDATE_INTERVAL_MS)
+
+  // `user` (the Firebase User instance) mutates in place on reload() — this
+  // exists purely to force a re-render after VerifyEmailGate calls reload(),
+  // since React won't notice an in-place mutation on its own.
+  const [, bumpUser] = useReducer((c) => c + 1, 0)
 
   useEffect(() => {
     if (!firebaseReady) return
@@ -75,6 +81,27 @@ export default function App() {
     return (
       <>
         <Auth justSignedOut={justSignedOut} onSignedOutDone={() => setJustSignedOut(false)} />
+        <UpdatePrompt ready update={pwaUpdate} />
+      </>
+    )
+  }
+
+  // Only accounts created through the sign-up flow going forward carry this
+  // flag — existing accounts are never retroactively gated on a verification
+  // they were never asked to complete (see needsVerifyKey in Auth.jsx).
+  const needsVerification = !user.emailVerified && localStorage.getItem(needsVerifyKey(user.uid)) === '1'
+  if (needsVerification) {
+    return (
+      <>
+        <VerifyEmailGate user={user} onVerified={() => { bumpUser(); setJustVerified(true) }} />
+        <UpdatePrompt ready update={pwaUpdate} />
+      </>
+    )
+  }
+  if (justVerified) {
+    return (
+      <>
+        <WelcomeScreen onDone={() => setJustVerified(false)} />
         <UpdatePrompt ready update={pwaUpdate} />
       </>
     )
