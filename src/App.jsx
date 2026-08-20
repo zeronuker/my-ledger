@@ -90,12 +90,13 @@ export default function App() {
 function AuthenticatedApp({ uid, pwaUpdate }) {
   const [tab, setTab] = useState('dashboard')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [previewSettings, setPreviewSettings] = useState(null)
   const { settings, update } = useSettings(uid)
   const { isOnline, syncStatus, lastSyncTime, conflict, sync, resolveKeepLocal, resolveKeepCloud } = useLedgerData()
 
   return (
     <>
-      <style>{makeThemeCss(settings)}</style>
+      <style>{makeThemeCss(previewSettings || settings)}</style>
       <div className="app-shell">
         <header className="app-header">
           <BrandBanner subtitle="LEDGER" />
@@ -126,7 +127,11 @@ function AuthenticatedApp({ uid, pwaUpdate }) {
       </div>
 
       {settingsOpen && (
-        <Settings uid={uid} settings={settings} update={update} pwaUpdate={pwaUpdate} onClose={() => setSettingsOpen(false)} />
+        <Settings
+          uid={uid} settings={settings} update={update} pwaUpdate={pwaUpdate}
+          onPreview={setPreviewSettings}
+          onClose={() => setSettingsOpen(false)}
+        />
       )}
 
       {conflict && (

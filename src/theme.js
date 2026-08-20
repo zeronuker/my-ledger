@@ -1,3 +1,4 @@
+// Same 10 curated presets as eLogBook's Settings modal.
 export const ACCENT_PRESETS = [
   { id: 'gradient', name: 'ClaudeBorne', colors: ['#3FE0C5', '#3B8DFF', '#5B6BFF'], single: '#3FE0C5' },
   { id: 'mint',     name: 'Mint',        colors: ['#3FE0C5'], single: '#3FE0C5' },
@@ -6,14 +7,17 @@ export const ACCENT_PRESETS = [
   { id: 'amber',    name: 'Amber',       colors: ['#FFB37C'], single: '#FFB37C' },
   { id: 'emerald',  name: 'Emerald',     colors: ['#10d983'], single: '#10d983' },
   { id: 'rose',     name: 'Rose',        colors: ['#f43f5e'], single: '#f43f5e' },
+  { id: 'cyan',     name: 'Cyan',        colors: ['#06b6d4'], single: '#06b6d4' },
+  { id: 'gold',     name: 'Gold',        colors: ['#eab308'], single: '#eab308' },
+  { id: 'coral',    name: 'Coral',       colors: ['#f97316'], single: '#f97316' },
 ]
 
 export const FONT_CHOICES = [
-  { id: 'jetbrains', name: 'JetBrains Mono', css: "'JetBrains Mono', monospace" },
-  { id: 'ibmplex',   name: 'IBM Plex Mono',  css: "'IBM Plex Mono', monospace" },
-  { id: 'roboto',    name: 'Roboto Mono',    css: "'Roboto Mono', monospace" },
-  { id: 'space',     name: 'Space Mono',     css: "'Space Mono', monospace" },
-  { id: 'courier',   name: 'Courier New',    css: "'Courier Prime', 'Courier New', monospace" },
+  { id: 'jetbrains', name: 'JetBrains Mono', sample: '0123 ABab', css: "'JetBrains Mono', monospace" },
+  { id: 'ibmplex',   name: 'IBM Plex Mono',  sample: '0123 ABab', css: "'IBM Plex Mono', monospace" },
+  { id: 'roboto',    name: 'Roboto Mono',    sample: '0123 ABab', css: "'Roboto Mono', monospace" },
+  { id: 'space',     name: 'Space Mono',     sample: '0123 ABab', css: "'Space Mono', monospace" },
+  { id: 'courier',   name: 'Courier New',    sample: '0123 ABab', css: "'Courier Prime', 'Courier New', monospace" },
 ]
 
 export const DENSITY_PAD = {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   EmailAuthProvider, reauthenticateWithCredential, deleteUser,
   sendPasswordResetEmail, signOut,
@@ -6,120 +6,229 @@ import {
 import { auth } from './firebase'
 import { clearAllCloudData } from './cloudSync'
 import { clearLocalData } from './localStore'
-import { ACCENT_PRESETS, FONT_CHOICES } from './theme'
+import { ACCENT_PRESETS, FONT_CHOICES, DEFAULT_SETTINGS } from './theme'
 import { useCategories } from './useCategories'
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_CARD_CATEGORIES } from './categories'
+import { SmSectionHead, SmField, SmRow, SmSegmented, SmSlider, SmCloseIcon } from './SettingsControls.jsx'
 
-const TABS = ['Appearance', 'Preferences', 'Account', 'About']
+const SETTINGS_TABS = [
+  { id: 'appearance', label: 'Appearance', hint: 'theme · accent · font' },
+  { id: 'preferences', label: 'Preferences', hint: 'categories' },
+  { id: 'account', label: 'Account', hint: 'password · sign out · delete' },
+  { id: 'about', label: 'About', hint: 'version · updates' },
+]
+
+// Only Appearance settings are part of the draft/Save/Cancel/Reset-tab
+// flow — categories and account actions apply instantly, same as eLogBook's
+// own delete-account section isn't gated by its Save button either.
+const APPEARANCE_KEYS = ['theme', 'accentPreset', 'fontFamily', 'fontSize', 'density']
+
 const APP_VERSION = '0.1.0'
 
-export default function Settings({ uid, settings, update, pwaUpdate, onClose }) {
-  const [tab, setTab] = useState('Appearance')
+// Matches eLogBook's Settings modal: draft-based Appearance tab with a live
+// preview pushed to the app behind the modal (onPreview), explicit
+// Save/Cancel/Reset-tab in the footer. Preferences and Account tabs apply
+// immediately (there's no "draft" concept for adding a category or signing
+// out), matching how eLogBook's own non-appearance tabs behave too.
+export default function Settings({ uid, settings, update, pwaUpdate, onPreview, onClose, initialTab }) {
+  const [tab, setTab] = useState(initialTab || 'appearance')
+  const [draft, setDraft] = useState(() => ({ ...DEFAULT_SETTINGS, ...settings }))
+  const [savedFlash, setSavedFlash] = useState(false)
+  const [resetFlash, setResetFlash] = useState(false)
 
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <h3>Settings</h3>
-          <button className="modal-x" onClick={onClose}>&times;</button>
-        </div>
-        <div className="modal-tabs">
-          {TABS.map((t) => (
-            <button key={t} className={`mtab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>{t}</button>
-          ))}
-        </div>
-        <div className="modal-body">
-          {tab === 'Appearance' && <AppearanceTab settings={settings} update={update} />}
-          {tab === 'Preferences' && <PreferencesTab uid={uid} />}
-          {tab === 'Account' && <AccountTab uid={uid} onClose={onClose} />}
-          {tab === 'About' && <AboutTab pwaUpdate={pwaUpdate} />}
-        </div>
-      </div>
-    </div>
-  )
-}
+  useEffect(() => {
+    onPreview?.(draft)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft])
 
-function AppearanceTab({ settings, update }) {
+  function handleClose() {
+    onPreview?.(null)
+    onClose()
+  }
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') handleClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function upd(patch) {
+    setDraft((prev) => ({ ...prev, ...patch }))
+  }
+
+  function handleSave() {
+    update(draft)
+    onPreview?.(null)
+    setSavedFlash(true)
+    setTimeout(() => setSavedFlash(false), 3000)
+  }
+
+  function handleResetTab() {
+    setDraft((prev) => {
+      const next = { ...prev }
+      APPEARANCE_KEYS.forEach((k) => { next[k] = DEFAULT_SETTINGS[k] })
+      return next
+    })
+    setResetFlash(true)
+    setTimeout(() => setResetFlash(false), 2000)
+  }
+
   return (
     <>
-      <div className="setting-row">
-        <span className="setting-label">Theme</span>
-        <div className="seg">
-          {['dark', 'light'].map((v) => (
-            <button key={v} className={settings.theme === v ? 'on' : ''} onClick={() => update({ theme: v })}>
-              {v[0].toUpperCase() + v.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
+      <div className="sm-backdrop" onClick={handleClose} />
+      <div className="sm-modal" role="dialog" aria-modal="true" aria-label="Settings">
+        <header className="sm-head">
+          <div>
+            <div className="sm-eyebrow">// settings</div>
+            <h2 className="sm-title">Settings</h2>
+          </div>
+          <button className="sm-close" onClick={handleClose} aria-label="Close"><SmCloseIcon /></button>
+        </header>
 
-      <div className="setting-row">
-        <span className="setting-label">Accent</span>
-        <div className="swatches">
-          {ACCENT_PRESETS.map((p) => (
+        <nav className="sm-tabs">
+          {SETTINGS_TABS.map((st) => (
             <button
-              key={p.id}
-              className={`swatch${settings.accentPreset === p.id ? ' on' : ''}`}
-              style={{ background: p.colors.length > 1 ? `linear-gradient(135deg, ${p.colors.join(', ')})` : p.single }}
-              onClick={() => update({ accentPreset: p.id })}
-              aria-label={p.name}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="setting-row">
-        <span className="setting-label">Font</span>
-        <div className="chips">
-          {FONT_CHOICES.map((f) => (
-            <button key={f.id} className={`chip${settings.fontFamily === f.id ? ' on' : ''}`} onClick={() => update({ fontFamily: f.id })}>
-              {f.name}
+              key={st.id} className={`sm-tab${tab === st.id ? ' on' : ''}`}
+              onClick={() => setTab(st.id)}
+            >
+              <span className="sm-tab-label">{st.label}</span>
+              <span className="sm-tab-hint">{st.hint}</span>
             </button>
           ))}
-        </div>
-      </div>
+        </nav>
 
-      <div className="setting-row">
-        <span className="setting-label">Font size — {settings.fontSize}px</span>
-        <input type="range" min="12" max="18" value={settings.fontSize}
-          onChange={(e) => update({ fontSize: Number(e.target.value) })} />
-      </div>
-
-      <div className="setting-row">
-        <span className="setting-label">Density</span>
-        <div className="seg">
-          {['compact', 'default', 'relaxed'].map((v) => (
-            <button key={v} className={settings.density === v ? 'on' : ''} onClick={() => update({ density: v })}>
-              {v[0].toUpperCase() + v.slice(1)}
-            </button>
-          ))}
+        <div className="sm-body">
+          {tab === 'appearance' && <AppearanceTab d={draft} upd={upd} />}
+          {tab === 'preferences' && <PreferencesTab uid={uid} />}
+          {tab === 'account' && <AccountTab uid={uid} onClose={handleClose} />}
+          {tab === 'about' && <AboutTab pwaUpdate={pwaUpdate} />}
         </div>
+
+        <footer className="sm-foot">
+          <div className={`sm-foot-note${savedFlash ? ' saved' : resetFlash ? ' reset' : ''}`}>
+            {savedFlash ? '// ✓ saved' : resetFlash ? '// tab reset to defaults' : '// changes save to your account · synced across devices'}
+          </div>
+          <div className="sm-foot-btns">
+            {tab === 'appearance' && <button className="cb-btn-reset" onClick={handleResetTab}>Reset tab</button>}
+            {tab !== 'about' && <button className="cb-btn-ghost" onClick={handleClose}>Cancel</button>}
+            {tab !== 'about' && <button className="cb-btn-primary" onClick={handleSave}>Save</button>}
+          </div>
+        </footer>
       </div>
     </>
   )
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  APPEARANCE TAB
+// ════════════════════════════════════════════════════════════════════
+function AppearanceTab({ d, upd }) {
+  const theme = d.theme || 'dark'
+  const fontSize = Math.min(18, Math.max(12, Number(d.fontSize) || 14))
+  const density = d.density || 'default'
+  const accentPreset = d.accentPreset || 'gradient'
+  const fontFamily = d.fontFamily || 'jetbrains'
+  const fontCss = FONT_CHOICES.find((f) => f.id === fontFamily)?.css || FONT_CHOICES[0].css
+
+  return (
+    <div className="sm-tab-content">
+      <SmSectionHead title="Theme" hint="// dark for low light · light for daytime" />
+      <SmRow>
+        <SmSegmented
+          value={theme} onChange={(v) => upd({ theme: v })}
+          options={[{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }]}
+        />
+      </SmRow>
+
+      <SmSectionHead title="Accent" hint="// 10 curated brand presets" />
+      <SmRow>
+        <div className="sm-accent-grid">
+          {ACCENT_PRESETS.map((p) => (
+            <button
+              key={p.id} type="button"
+              className={`sm-accent${accentPreset === p.id ? ' on' : ''}`}
+              onClick={() => upd({ accentPreset: p.id })}
+              aria-label={p.name}
+            >
+              <span
+                className="sm-accent-swatch"
+                style={{ background: p.colors.length > 1 ? `linear-gradient(135deg, ${p.colors.join(', ')})` : p.single }}
+              />
+              <span className="sm-accent-name">{p.name}</span>
+            </button>
+          ))}
+        </div>
+      </SmRow>
+
+      <SmSectionHead title="Font family" hint="// 5 monospace choices · keeps numbers aligned" />
+      <SmRow>
+        <div className="sm-font-grid">
+          {FONT_CHOICES.map((f) => (
+            <button
+              key={f.id} type="button"
+              className={`sm-font${fontFamily === f.id ? ' on' : ''}`}
+              onClick={() => upd({ fontFamily: f.id })}
+            >
+              <span className="sm-font-sample" style={{ fontFamily: f.css }}>{f.sample}</span>
+              <span className="sm-font-name">{f.name}</span>
+            </button>
+          ))}
+        </div>
+      </SmRow>
+
+      <SmSectionHead title="Text size" hint="// 12–18px · scales table + body text" />
+      <SmRow>
+        <SmSlider
+          min={12} max={18} step={1} value={fontSize}
+          onChange={(v) => upd({ fontSize: v })}
+          ticks={['12', '13', '14', '15', '16', '17', '18']} unit="px"
+        />
+      </SmRow>
+      <div className="sm-font-preview" style={{ fontFamily: fontCss, fontSize }}>
+        MYR 1,234.56 · EXPENSES · CREDIT CARDS · 08/2026
+      </div>
+
+      <SmSectionHead title="Density" hint="// row height & padding across every table" />
+      <SmRow>
+        <SmSegmented
+          value={density} onChange={(v) => upd({ density: v })}
+          options={[
+            { value: 'compact', label: 'Compact' },
+            { value: 'default', label: 'Default' },
+            { value: 'relaxed', label: 'Relaxed' },
+          ]}
+        />
+      </SmRow>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  PREFERENCES TAB
+// ════════════════════════════════════════════════════════════════════
 function PreferencesTab({ uid }) {
   const expense = useCategories(uid, 'expenseCategories', DEFAULT_EXPENSE_CATEGORIES)
   const card = useCategories(uid, 'cardCategories', DEFAULT_CARD_CATEGORIES)
 
   return (
-    <>
+    <div className="sm-tab-content">
       <CategoryList
-        label="Expense sub-categories"
-        hint="Grouped under a category in the Expenses grid (e.g. Loans, Utilities & Fees)."
+        title="Expense sub-categories"
+        hint="// grouped under a category in the Expenses grid"
         items={expense.items} onAdd={expense.add} onRemove={expense.remove}
         withGroup
       />
       <CategoryList
-        label="Credit card categories"
+        title="Credit card categories"
+        hint="// tags each card transaction"
         items={card.items} onAdd={card.add} onRemove={card.remove}
       />
-    </>
+    </div>
   )
 }
 
-function CategoryList({ label, hint, items, onAdd, onRemove, withGroup }) {
+function CategoryList({ title, hint, items, onAdd, onRemove, withGroup }) {
   const [name, setName] = useState('')
   const [group, setGroup] = useState('')
 
@@ -132,33 +241,37 @@ function CategoryList({ label, hint, items, onAdd, onRemove, withGroup }) {
   }
 
   return (
-    <div className="setting-row">
-      <span className="setting-label">{label}</span>
-      <div className="cat-list">
-        {items.map((c) => (
-          <span key={c.id} className="cat-pill">
-            {c.name}{withGroup && c.group ? <span className="cat-pill-group"> · {c.group}</span> : ''}
-            <span className="cat-pill-x" onClick={() => onRemove(c.id)}>×</span>
-          </span>
-        ))}
-        {items.length === 0 && <span className="hint">None yet.</span>}
-      </div>
-      <form onSubmit={submit} style={{ display: 'flex', gap: 6 }}>
-        <input placeholder="New category" value={name} onChange={(e) => setName(e.target.value)} style={{ flex: 1 }} />
-        {withGroup && (
-          <input placeholder="Group (optional)" value={group} onChange={(e) => setGroup(e.target.value)} style={{ flex: 1 }} />
-        )}
-        <button type="submit" className="cb-btn">ADD</button>
-      </form>
-      {hint && <span className="hint">{hint}</span>}
-    </div>
+    <>
+      <SmSectionHead title={title} hint={hint} />
+      <SmRow>
+        <div className="sm-cat-list">
+          {items.map((c) => (
+            <span key={c.id} className="sm-cat-pill">
+              {c.name}{withGroup && c.group ? <span className="sm-cat-pill-group"> · {c.group}</span> : ''}
+              <span className="sm-cat-pill-x" onClick={() => onRemove(c.id)}>×</span>
+            </span>
+          ))}
+          {items.length === 0 && <span className="sm-field-hint">None yet.</span>}
+        </div>
+        <form onSubmit={submit} className="sm-cat-form">
+          <input className="sm-input" placeholder="New category" value={name} onChange={(e) => setName(e.target.value)} />
+          {withGroup && (
+            <input className="sm-input" placeholder="Group (optional)" value={group} onChange={(e) => setGroup(e.target.value)} />
+          )}
+          <button type="submit" className="sm-cf-add">+ Add</button>
+        </form>
+      </SmRow>
+    </>
   )
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  ACCOUNT TAB
+// ════════════════════════════════════════════════════════════════════
 function AccountTab({ uid, onClose }) {
   const user = auth.currentUser
   const [resetSent, setResetSent] = useState(false)
-  const [confirming, setConfirming] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -190,76 +303,89 @@ function AccountTab({ uid, onClose }) {
   }
 
   return (
-    <>
-      <div className="setting-row">
-        <span className="setting-label">Signed in as</span>
-        <span style={{ color: 'var(--cb-ink)' }}>{user?.email}</span>
-      </div>
+    <div className="sm-tab-content">
+      <SmSectionHead title="Account" hint="// signed in as" />
+      <SmField label={user?.email || '—'} hint="Your account email — contact support to change it." />
 
-      <div className="setting-row">
-        <span className="setting-label">Password</span>
-        <button className="cb-btn" onClick={handleResetPassword}>SEND RESET EMAIL</button>
-        {resetSent && <span className="hint">Check your inbox for a reset link.</span>}
-      </div>
+      <SmSectionHead title="Password" hint="// reset via email link" />
+      <SmField
+        label="Send a password reset link"
+        hint={resetSent ? 'Check your inbox for a reset link.' : 'Emails a reset link to your account address.'}
+      >
+        <button className="cb-btn-ghost" onClick={handleResetPassword} disabled={resetSent}>
+          {resetSent ? 'SENT' : 'SEND RESET EMAIL'}
+        </button>
+      </SmField>
 
-      <div className="setting-row">
-        <button className="cb-btn" onClick={() => { signOut(auth); onClose() }}>SIGN OUT</button>
-      </div>
+      <SmSectionHead title="Session" hint="// this device" />
+      <SmField label="Sign out" hint="Ends your session on this device.">
+        <button className="cb-btn-ghost" onClick={() => { signOut(auth); onClose() }}>SIGN OUT</button>
+      </SmField>
 
-      <div className="setting-row" style={{ borderTop: '1px solid var(--cb-line)', paddingTop: 16 }}>
-        <span className="setting-label" style={{ color: '#ff6b6b' }}>Delete account</span>
-        {!confirming ? (
-          <button className="cb-btn cb-btn--danger-outline" onClick={() => setConfirming(true)}>DELETE MY ACCOUNT</button>
-        ) : (
-          <form onSubmit={handleDeleteAccount} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span className="hint">This permanently erases all your data. Enter your password to confirm.</span>
-            <input type="password" placeholder="Password" value={password} required
-              onChange={(e) => setPassword(e.target.value)} />
-            {error && <span className="hint" style={{ color: '#ff6b6b' }}>{error}</span>}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="submit" className="cb-btn cb-btn--danger-outline" disabled={busy}>CONFIRM DELETE</button>
-              <button type="button" className="cb-btn" onClick={() => setConfirming(false)}>CANCEL</button>
-            </div>
-          </form>
-        )}
-      </div>
-    </>
+      <SmSectionHead title="Account" hint="// danger zone" />
+      {!confirmDelete ? (
+        <button
+          type="button" className="sm-delete-trigger"
+          onClick={() => { setConfirmDelete(true); setError(''); setPassword('') }}
+        >
+          <span className="sm-delete-trigger-label">Delete account &amp; all data</span>
+          <span className="sm-delete-trigger-hint">Permanently removes your account and every collection under it. This cannot be undone.</span>
+        </button>
+      ) : (
+        <form className="sm-delete-confirm" onSubmit={handleDeleteAccount}>
+          <div className="sm-delete-warn">⚠ Confirm your identity</div>
+          <div className="sm-delete-body">Enter your password to permanently delete your account and all data.</div>
+          <input
+            type="password" className="sm-input" placeholder="Your password"
+            value={password} disabled={busy} required
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ marginTop: 10 }}
+          />
+          {error && (
+            <div className="sm-delete-body" style={{ color: '#ef4444', marginTop: 8, marginBottom: 0 }}>⚠ {error}</div>
+          )}
+          <div className="sm-delete-actions" style={{ marginTop: 10 }}>
+            <button
+              type="button" className="cb-btn-ghost" disabled={busy}
+              onClick={() => { setConfirmDelete(false); setPassword(''); setError('') }}
+            >Cancel</button>
+            <button type="submit" className="cb-btn-danger" disabled={busy || !password}>
+              {busy ? 'DELETING…' : 'DELETE ACCOUNT'}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   )
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  ABOUT TAB
+// ════════════════════════════════════════════════════════════════════
 function AboutTab({ pwaUpdate }) {
   const { current, needRefresh, updateServiceWorker, checkForUpdate, checkingUpdate, updateChecked } = pwaUpdate
 
   return (
-    <>
-      <div className="setting-row">
-        <span className="setting-label">Version</span>
-        <span className="cb-mono" style={{ color: 'var(--cb-ink)' }}>{APP_VERSION}</span>
-      </div>
-      <div className="setting-row">
-        <span className="setting-label">Part of ClaudeBorne</span>
-        <span className="hint">Shares brand and visual language with eLogBook and SuperApp.</span>
-      </div>
+    <div className="sm-tab-content">
+      <SmSectionHead title="App" hint="// about" />
+      <SmField label="Version"><span className="sm-version-tag">{APP_VERSION}</span></SmField>
+      <SmField label="Part of ClaudeBorne" hint="Shares brand and visual language with eLogBook and SuperApp." />
 
-      <div className="setting-row">
-        <span className="setting-label">App update</span>
-        <span className="hint">Current build: {current.version}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {needRefresh ? (
-            <button className="cb-btn cb-btn--primary" onClick={() => updateServiceWorker(true)}>UPDATE NOW</button>
-          ) : (
-            <button className="cb-btn" onClick={checkForUpdate} disabled={checkingUpdate}>
-              {checkingUpdate ? 'CHECKING…' : 'CHECK FOR UPDATES'}
-            </button>
-          )}
-          {updateChecked && !needRefresh && (
-            <span className="hint" style={{ color: 'var(--cb-mint)' }}>✓ UP TO DATE</span>
-          )}
-          {needRefresh && !checkingUpdate && (
-            <span className="hint" style={{ color: 'var(--cb-mint)' }}>NEW VERSION AVAILABLE</span>
-          )}
-        </div>
-      </div>
-    </>
+      <SmSectionHead title="App update" hint="// check for new version" />
+      <SmField
+        label={`Current build: ${current.version}`}
+        hint={needRefresh ? 'A new version is ready to install.' : 'You have the latest version.'}
+      >
+        {needRefresh ? (
+          <button className="cb-btn-primary" onClick={() => updateServiceWorker(true)}>UPDATE NOW</button>
+        ) : (
+          <button className="cb-btn-ghost" onClick={checkForUpdate} disabled={checkingUpdate}>
+            {checkingUpdate ? 'CHECKING…' : 'CHECK FOR UPDATES'}
+          </button>
+        )}
+      </SmField>
+      {updateChecked && !needRefresh && <div className="sm-hint" style={{ color: 'var(--cb-mint)' }}>✓ Up to date</div>}
+      {needRefresh && !checkingUpdate && <div className="sm-hint" style={{ color: 'var(--cb-mint)' }}>New version available</div>}
+    </div>
   )
 }
