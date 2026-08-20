@@ -1,40 +1,28 @@
-import { useEffect, useState } from 'react'
-import { collection, doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore'
-import { db } from './firebase'
+import { useLedgerData } from './LedgerDataContext'
 
 // One doc per category+month (docId = `${categoryId}_${month}`) — the
 // Expenses grid is a true budget sheet, not a transaction ledger, so
 // there's exactly one number per cell, never a list to sum.
 export function useExpenseEntries(uid) {
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (!uid) return
-    const colRef = collection(db, 'users', uid, 'expenseEntries')
-    const unsub = onSnapshot(colRef, (snap) => {
-      setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-      setLoading(false)
-    })
-    return unsub
-  }, [uid])
+  const ctx = useLedgerData()
+  const map = ctx.collections.expenseEntries || {}
+  const items = Object.entries(map).map(([id, d]) => ({ id, ...d }))
 
   // Blank/zero clears the cell entirely (including paid status) rather
-  // than storing a 0 row. merge:true on the write path so editing the
+  // than storing a 0 row. Merges onto the existing doc so editing the
   // amount of an already-paid cell doesn't wipe its paid flag.
   function setEntry(categoryId, month, amount) {
-    const ref = doc(db, 'users', uid, 'expenseEntries', `${categoryId}_${month}`)
+    const id = `${categoryId}_${month}`
     if (!amount || Number(amount) === 0) {
-      deleteDoc(ref)
+      ctx.removeItem('expenseEntries', id)
     } else {
-      setDoc(ref, { categoryId, month, amount: Number(amount) }, { merge: true })
+      ctx.updateItem('expenseEntries', id, { categoryId, month, amount: Number(amount) })
     }
   }
 
   function setPaid(categoryId, month, paid) {
-    const ref = doc(db, 'users', uid, 'expenseEntries', `${categoryId}_${month}`)
-    setDoc(ref, { paid }, { merge: true })
+    ctx.updateItem('expenseEntries', `${categoryId}_${month}`, { paid })
   }
 
-  return { items, loading, setEntry, setPaid }
+  return { items, loading: !ctx.dataLoaded, setEntry, setPaid }
 }

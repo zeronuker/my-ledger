@@ -3,8 +3,9 @@ import {
   EmailAuthProvider, reauthenticateWithCredential, deleteUser,
   sendPasswordResetEmail, signOut,
 } from 'firebase/auth'
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore'
-import { auth, db } from './firebase'
+import { auth } from './firebase'
+import { clearAllCloudData } from './cloudSync'
+import { clearLocalData } from './localStore'
 import { ACCENT_PRESETS, FONT_CHOICES } from './theme'
 import { useCategories } from './useCategories'
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_CARD_CATEGORIES } from './categories'
@@ -177,12 +178,10 @@ function AccountTab({ uid, onClose }) {
 
       // Identity confirmed — erase every collection under this user, then the
       // auth account itself. Firestore rules require auth.uid to still match,
-      // so data must go first.
-      const collections = ['expenses', 'cardTransactions', 'cards', 'income', 'settings']
-      for (const name of collections) {
-        const snap = await getDocs(collection(db, 'users', uid, name))
-        await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)))
-      }
+      // so data must go first. Local cache goes too, or a reload would just
+      // treat it as an unsynced device and try to push it all back.
+      await clearAllCloudData(uid)
+      clearLocalData(uid)
       await deleteUser(user)
     } catch (err) {
       setError(err.message.replace('Firebase: ', ''))

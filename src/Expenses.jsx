@@ -1,9 +1,8 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { collection, getDocs, addDoc } from 'firebase/firestore'
-import { db } from './firebase'
 import { useExpenseEntries } from './useExpenseEntries'
 import { useCategories } from './useCategories'
 import { useCategoryGroups } from './useCategoryGroups'
+import { useLedgerData } from './LedgerDataContext'
 import { DEFAULT_EXPENSE_CATEGORIES } from './categories'
 import { monthLabel, monthRange, currentMonth } from './months'
 import CategoryManagerModal from './CategoryManagerModal.jsx'
@@ -17,6 +16,7 @@ export default function Expenses({ uid }) {
   const { items, loading, setEntry, setPaid } = useExpenseEntries(uid)
   const categories = useCategories(uid, 'expenseCategories', DEFAULT_EXPENSE_CATEGORIES)
   const categoryGroups = useCategoryGroups(uid)
+  const ctx = useLedgerData()
   const [hiddenMonths, setHiddenMonths] = useState(() => new Set())
   const [managerOpen, setManagerOpen] = useState(false)
   const backfillRan = useRef(false)
@@ -32,28 +32,19 @@ export default function Expenses({ uid }) {
 
   // One-time backfill: categories created before expenseCategoryGroups
   // existed only had a free-text `.group` string, no real group doc — give
-  // each of those a real (and now reorderable) doc. Uses a direct one-shot
-  // getDocs read rather than the live hooks' `items`, because Firestore can
-  // deliver an empty/incomplete cache snapshot before the authoritative one
-  // (bit us once already with Credit Cards' composite-index query) — trusting
-  // that transient state here would create duplicate group docs.
+  // each of those a real (and now reorderable) doc. Reads straight from the
+  // local-first store (already the authoritative loaded snapshot once
+  // ctx.dataLoaded flips), so unlike the old Firestore-only version there's
+  // no cache-then-server race to dodge.
   useEffect(() => {
-    if (!uid || backfillRan.current) return
+    if (!uid || !ctx.dataLoaded || backfillRan.current) return
     backfillRan.current = true
-    ;(async () => {
-      const [catsSnap, groupsSnap] = await Promise.all([
-        getDocs(collection(db, 'users', uid, 'expenseCategories')),
-        getDocs(collection(db, 'users', uid, 'expenseCategoryGroups')),
-      ])
-      const existingNames = new Set(groupsSnap.docs.map((d) => d.data().name))
-      const neededNames = [...new Set(catsSnap.docs.map((d) => d.data().group).filter(Boolean))]
-      const missing = neededNames.filter((n) => !existingNames.has(n))
-      let order = groupsSnap.size
-      for (const name of missing) {
-        await addDoc(collection(db, 'users', uid, 'expenseCategoryGroups'), { name, order: order++ })
-      }
-    })()
-  }, [uid])
+    const existingNames = new Set(categoryGroups.items.map((g) => g.name))
+    const neededNames = [...new Set(categories.items.map((c) => c.group).filter(Boolean))]
+    const missing = neededNames.filter((n) => !existingNames.has(n))
+    let order = categoryGroups.items.length
+    missing.forEach((name) => categoryGroups.add({ name, order: order++ }))
+  }, [uid, ctx.dataLoaded, categories.items, categoryGroups.items, categoryGroups])
 
   const entryByKey = useMemo(() => {
     const map = new Map()

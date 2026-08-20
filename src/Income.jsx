@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { doc, setDoc } from 'firebase/firestore'
-import { db } from './firebase'
 import { useCollection } from './useCollection'
+import { useLedgerData } from './LedgerDataContext'
 
 function currentMonth() { return new Date().toISOString().slice(0, 7) }
 function monthLabel(monthStr) {
@@ -20,6 +19,7 @@ const EMPTY_DOC = { earnings: [], deductions: [], currency: 'MYR' }
 
 export default function Income({ uid }) {
   const { items, loading } = useCollection(uid, 'income', 'month')
+  const ctx = useLedgerData()
   const [month, setMonth] = useState(currentMonth())
   const [draft, setDraft] = useState(EMPTY_DOC)
   const loadedMonth = useRef(null)
@@ -37,7 +37,7 @@ export default function Income({ uid }) {
 
   function save(next) {
     setDraft(next)
-    setDoc(doc(db, 'users', uid, 'income', month), { month, ...next }, { merge: false })
+    ctx.setItemFull('income', month, { month, ...next })
   }
 
   const year = month.slice(0, 4)

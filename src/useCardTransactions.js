@@ -1,43 +1,28 @@
-import { useEffect, useState } from 'react'
-import {
-  collection, query, where, orderBy, limit, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
-} from 'firebase/firestore'
-import { db } from './firebase'
+import { useLedgerData } from './LedgerDataContext'
 
-// Generous cap on how far back a single card's history loads. A single
-// equality filter (cardId) + orderBy on a different field (date) is a
-// standard Firestore pattern that doesn't need a manual composite index,
-// unlike adding a date range filter on top — so range-narrowing (3M/6M/etc)
-// stays client-side on this already-scoped set instead of a second where().
+// Local reads have no query-plan cost, but keep a generous cap on how far
+// back a single card's history renders — a holdover from the old Firestore
+// query limit, still a reasonable sanity bound for one card's feed.
 const FETCH_LIMIT = 1000
 
 // Scoped to one card (unlike useCollection(uid, 'cardTransactions'), which
 // pulls every transaction for every card — fine for Dashboard's all-cards
 // totals, too much for a single card's transaction list).
 export function useCardTransactions(uid, cardId) {
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
+  const ctx = useLedgerData()
+  const map = ctx.collections.cardTransactions || {}
 
-  useEffect(() => {
-    if (!uid || !cardId) {
-      setItems([])
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    const colRef = collection(db, 'users', uid, 'cardTransactions')
-    const q = query(colRef, where('cardId', '==', cardId), orderBy('date', 'desc'), limit(FETCH_LIMIT))
-    const unsub = onSnapshot(q, (snap) => {
-      setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-      setLoading(false)
-    })
-    return unsub
-  }, [uid, cardId])
+  const items = !cardId ? [] : Object.entries(map)
+    .filter(([, d]) => d.cardId === cardId)
+    .map(([id, d]) => ({ id, ...d }))
+    .sort((a, b) => ((a.date || '') < (b.date || '') ? 1 : (a.date || '') > (b.date || '') ? -1 : 0))
+    .slice(0, FETCH_LIMIT)
 
-  const colRef = () => collection(db, 'users', uid, 'cardTransactions')
-  const add = (data) => addDoc(colRef(), data)
-  const update = (id, data) => updateDoc(doc(colRef(), id), data)
-  const remove = (id) => deleteDoc(doc(colRef(), id))
-
-  return { items, loading, add, update, remove }
+  return {
+    items,
+    loading: !ctx.dataLoaded,
+    add: (itemData) => ctx.addItem('cardTransactions', itemData),
+    update: (id, patch) => ctx.updateItem('cardTransactions', id, patch),
+    remove: (id) => ctx.removeItem('cardTransactions', id),
+  }
 }

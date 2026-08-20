@@ -65,6 +65,27 @@ body {
 }
 .icon-btn:hover { color: var(--cb-ink); border-color: var(--cb-mint); }
 
+/* ---- Sync status chip ---- */
+.sync-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--cb-font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 6px 10px; border-radius: 999px; border: 1px solid var(--cb-line-2); background: var(--cb-surface-2);
+  color: var(--cb-ink-dim); cursor: pointer; white-space: nowrap;
+}
+.sync-chip:disabled { cursor: not-allowed; }
+.sync-chip:not(:disabled):hover { border-color: var(--cb-mint); color: var(--cb-ink); }
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.sync-chip--offline { color: var(--cb-ink-dim); }
+.sync-chip--idle { color: var(--cb-ink-dim); }
+.sync-chip--syncing { color: #f5c542; border-color: #f5c542; }
+.sync-chip--syncing .sync-dot { animation: sync-pulse 1s ease-in-out infinite; }
+.sync-chip--synced { color: var(--cb-mint); border-color: var(--cb-mint); }
+.sync-chip--error { color: #ff6b6b; border-color: #ff6b6b; }
+@keyframes sync-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
 /* ---- Settings modal ---- */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100;

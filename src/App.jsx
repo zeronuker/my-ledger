@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth, firebaseReady } from './firebase'
 import { useSettings } from './useSettings'
+import { LedgerDataProvider, useLedgerData } from './LedgerDataContext'
 import { makeThemeCss } from './theme'
 import Auth from './Auth.jsx'
 import Settings from './Settings.jsx'
@@ -9,6 +10,8 @@ import Dashboard from './Dashboard.jsx'
 import Expenses from './Expenses.jsx'
 import CreditCards from './CreditCards.jsx'
 import Income from './Income.jsx'
+import SyncStatus from './SyncStatus.jsx'
+import SyncConflictModal from './SyncConflictModal.jsx'
 import BrandBanner from '@brand/BrandBanner'
 
 const TABS = [
@@ -20,9 +23,6 @@ const TABS = [
 
 export default function App() {
   const [user, setUser] = useState(undefined) // undefined = loading, null = signed out
-  const [tab, setTab] = useState('dashboard')
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const { settings, update } = useSettings(user?.uid)
 
   useEffect(() => {
     if (firebaseReady) return onAuthStateChanged(auth, setUser)
@@ -49,12 +49,28 @@ export default function App() {
   if (!user) return <Auth />
 
   return (
+    <LedgerDataProvider uid={user.uid}>
+      <AuthenticatedApp uid={user.uid} />
+    </LedgerDataProvider>
+  )
+}
+
+function AuthenticatedApp({ uid }) {
+  const [tab, setTab] = useState('dashboard')
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const { settings, update } = useSettings(uid)
+  const { isOnline, syncStatus, lastSyncTime, conflict, sync, resolveKeepLocal, resolveKeepCloud } = useLedgerData()
+
+  return (
     <>
       <style>{makeThemeCss(settings)}</style>
       <div className="app-shell">
         <header className="app-header">
           <BrandBanner subtitle="LEDGER" />
-          <button className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>⚙</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <SyncStatus isOnline={isOnline} syncStatus={syncStatus} lastSyncTime={lastSyncTime} onSync={sync} />
+            <button className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>⚙</button>
+          </div>
         </header>
 
         <nav className="app-tabs">
@@ -70,15 +86,19 @@ export default function App() {
         </nav>
 
         <main className="app-main">
-          {tab === 'dashboard' && <Dashboard uid={user.uid} />}
-          {tab === 'expenses' && <Expenses uid={user.uid} />}
-          {tab === 'cards' && <CreditCards uid={user.uid} />}
-          {tab === 'income' && <Income uid={user.uid} />}
+          {tab === 'dashboard' && <Dashboard uid={uid} />}
+          {tab === 'expenses' && <Expenses uid={uid} />}
+          {tab === 'cards' && <CreditCards uid={uid} />}
+          {tab === 'income' && <Income uid={uid} />}
         </main>
       </div>
 
       {settingsOpen && (
-        <Settings uid={user.uid} settings={settings} update={update} onClose={() => setSettingsOpen(false)} />
+        <Settings uid={uid} settings={settings} update={update} onClose={() => setSettingsOpen(false)} />
+      )}
+
+      {conflict && (
+        <SyncConflictModal onKeepLocal={resolveKeepLocal} onKeepCloud={resolveKeepCloud} />
       )}
     </>
   )
