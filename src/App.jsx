@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth, firebaseReady } from './firebase'
 import { useSettings } from './useSettings'
@@ -29,25 +29,40 @@ const SW_UPDATE_INTERVAL_MS = 30 * 60 * 1000
 
 export default function App() {
   const [user, setUser] = useState(undefined) // undefined = loading, null = signed out
+  const [justSignedOut, setJustSignedOut] = useState(false)
+  const prevUserRef = useRef(undefined)
   const pwaUpdate = useUpdate('ledger', SW_UPDATE_INTERVAL_MS)
 
   useEffect(() => {
-    if (firebaseReady) return onAuthStateChanged(auth, setUser)
+    if (!firebaseReady) return
+    return onAuthStateChanged(auth, (u) => {
+      // Only a real signed-in → signed-out transition counts — not the
+      // initial cold-load resolving to "no user", which should land on the
+      // ordinary landing screen, not a signed-out confirmation.
+      if (prevUserRef.current && !u) setJustSignedOut(true)
+      prevUserRef.current = u
+      setUser(u)
+    })
   }, [])
 
   if (!firebaseReady) {
     return (
       <>
         <div className="auth-screen">
-          <div className="auth-card">
-            <span className="cb-logo">
-              <span className="cb-logo__mark" aria-hidden="true" />
-              <span className="cb-logo__wordmark">CLAUDEBORNE</span>
-            </span>
-            <div className="cb-eyebrow" style={{ marginTop: 8 }}>LEDGER</div>
-            <p className="dim" style={{ textAlign: 'center', marginTop: 8 }}>
-              Firebase isn't configured yet — add your project's config to <code>.env.local</code> to sign in.
-            </p>
+          <div className="auth-card-wrap">
+            <div className="auth-card">
+              <div className="auth-cbar" />
+              <div className="auth-cbody" style={{ textAlign: 'center' }}>
+                <span className="cb-logo">
+                  <span className="cb-logo__mark" aria-hidden="true" />
+                  <span className="cb-logo__wordmark">CLAUDEBORNE</span>
+                </span>
+                <div className="cb-eyebrow" style={{ marginTop: 8 }}>LEDGER</div>
+                <p className="auth-subtitle" style={{ marginTop: 12, marginBottom: 0 }}>
+                  Firebase isn't configured yet — add your project's config to <code>.env.local</code> to sign in.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
         <UpdatePrompt ready update={pwaUpdate} />
@@ -59,7 +74,7 @@ export default function App() {
   if (!user) {
     return (
       <>
-        <Auth />
+        <Auth justSignedOut={justSignedOut} onSignedOutDone={() => setJustSignedOut(false)} />
         <UpdatePrompt ready update={pwaUpdate} />
       </>
     )
