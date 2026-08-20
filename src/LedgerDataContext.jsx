@@ -72,7 +72,15 @@ export function LedgerDataProvider({ uid, children }) {
       return
     }
     let cancelled = false
+    // Clear the previous account's data synchronously, before the async load
+    // below even starts — otherwise a same-tab account switch (sign out,
+    // sign in as someone else, no page reload) could render the old user's
+    // numbers for a tick while the new user's local cache is read.
+    setData(emptyLocalData())
     setDataLoaded(false)
+    setLastSyncTime(null)
+    setSyncStatus('idle')
+    setConflict(null)
 
     ;(async () => {
       const local = loadLocalData(uid)
