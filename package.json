@@ -1,7 +1,7 @@
 {
   "name": "my-ledger",
   "private": true,
-  "version": "0.1.0",
+  "version": "3.9.0",
   "type": "module",
   "scripts": {
     "dev": "node brand-kit/scripts/write-build-info.mjs && vite",

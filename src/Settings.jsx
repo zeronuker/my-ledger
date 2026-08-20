@@ -10,6 +10,7 @@ import { ACCENT_PRESETS, FONT_CHOICES, DEFAULT_SETTINGS } from './theme'
 import { useCategories } from './useCategories'
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_CARD_CATEGORIES } from './categories'
 import { SmSectionHead, SmField, SmRow, SmSegmented, SmSlider, SmCloseIcon } from './SettingsControls.jsx'
+import { CHANGELOG } from './changelog'
 
 const SETTINGS_TABS = [
   { id: 'appearance', label: 'Appearance', hint: 'theme · accent · font' },
@@ -23,7 +24,22 @@ const SETTINGS_TABS = [
 // own delete-account section isn't gated by its Save button either.
 const APPEARANCE_KEYS = ['theme', 'accentPreset', 'fontFamily', 'fontSize', 'density']
 
-const APP_VERSION = '0.1.0'
+// Single source of truth: the app's displayed version is always the newest
+// changelog entry, so it can never drift out of sync the way the old
+// hardcoded '0.1.0' did across 30+ commits.
+const APP_VERSION = CHANGELOG[CHANGELOG.length - 1].v
+
+// Render a changelog note: pull a leading NEW/IMP/FIX tag into a styled badge.
+function renderNote(n) {
+  const m = /^(NEW|IMP|FIX):\s*/.exec(n)
+  if (!m) return n
+  return (
+    <>
+      <span className={`sm-cl-tag sm-cl-tag-${m[1]}`}>{m[1]}</span>
+      {n.slice(m[0].length)}
+    </>
+  )
+}
 
 // Matches eLogBook's Settings modal: draft-based Appearance tab with a live
 // preview pushed to the app behind the modal (onPreview), explicit
@@ -364,6 +380,9 @@ function AccountTab({ uid, onClose }) {
 // ════════════════════════════════════════════════════════════════════
 function AboutTab({ pwaUpdate }) {
   const { current, needRefresh, updateServiceWorker, checkForUpdate, checkingUpdate, updateChecked } = pwaUpdate
+  const [showHistory, setShowHistory] = useState(false)
+  const currentEntry = CHANGELOG.find((e) => e.current) || CHANGELOG[CHANGELOG.length - 1]
+  const pastEntries = CHANGELOG.filter((e) => e !== currentEntry).slice().reverse()
 
   return (
     <div className="sm-tab-content">
@@ -386,6 +405,41 @@ function AboutTab({ pwaUpdate }) {
       </SmField>
       {updateChecked && !needRefresh && <div className="sm-hint" style={{ color: 'var(--cb-mint)' }}>✓ Up to date</div>}
       {needRefresh && !checkingUpdate && <div className="sm-hint" style={{ color: 'var(--cb-mint)' }}>New version available</div>}
+
+      <SmSectionHead title="Changelog" hint="// version history" />
+      <div className="sm-changelog">
+        <article className="sm-cl-entry current">
+          <div className="sm-cl-head">
+            <span className="sm-cl-v">{currentEntry.v}</span>
+            <span className="sm-cl-date">{currentEntry.date}</span>
+            <span className="sm-cl-now">// you are here</span>
+          </div>
+          <h4 className="sm-cl-title">{currentEntry.title}</h4>
+          <ul className="sm-cl-notes">
+            {currentEntry.notes.map((n, i) => <li key={i}>{renderNote(n)}</li>)}
+          </ul>
+        </article>
+
+        {pastEntries.length > 0 && (
+          <button className="sm-cl-history-toggle" onClick={() => setShowHistory((v) => !v)}>
+            <span>{showHistory ? '▲' : '▼'}</span>
+            <span>{showHistory ? 'Hide' : 'Show'} previous versions ({pastEntries.length})</span>
+          </button>
+        )}
+
+        {showHistory && pastEntries.map((e) => (
+          <article key={e.v} className="sm-cl-entry">
+            <div className="sm-cl-head">
+              <span className="sm-cl-v">{e.v}</span>
+              <span className="sm-cl-date">{e.date}</span>
+            </div>
+            <h4 className="sm-cl-title">{e.title}</h4>
+            <ul className="sm-cl-notes">
+              {e.notes.map((n, i) => <li key={i}>{renderNote(n)}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
     </div>
   )
 }
