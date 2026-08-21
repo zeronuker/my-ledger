@@ -209,7 +209,7 @@ function GridTable({ rows, allMonths, thisMonth, isCurrentYear, hiddenSet, toggl
   let stripeIdx = 0
   return (
     <div className="grid-wrap">
-      <table className="grid-table">
+      <table className="grid-table grid-table--narrow">
         <thead>
           <tr>
             <th></th>

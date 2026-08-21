@@ -353,6 +353,7 @@ select {
 .grid-table th:last-child, .grid-table td:last-child { border-right: none; }
 .grid-table th:first-child, .grid-table td:first-child { width: 190px; }
 .grid-table th:not(:first-child):not(.th-stub), .grid-table td:not(:first-child):not(.td-stub) { width: 140px; }
+.grid-table.grid-table--narrow th:not(:first-child):not(.th-stub), .grid-table.grid-table--narrow td:not(:first-child):not(.td-stub) { width: 120px; }
 .grid-table th {
   font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cb-ink-dim);
   font-weight: 700; background: var(--cb-surface-1); text-align: center;
