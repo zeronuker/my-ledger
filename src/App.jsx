@@ -12,6 +12,7 @@ import Dashboard from './Dashboard.jsx'
 import Expenses from './Expenses.jsx'
 import CreditCards from './CreditCards.jsx'
 import Income from './Income.jsx'
+import Investments from './Investments.jsx'
 import SyncStatus from './SyncStatus.jsx'
 import LocalSaveStatus from './LocalSaveStatus.jsx'
 import SyncConflictModal from './SyncConflictModal.jsx'
@@ -50,12 +51,20 @@ const IncomeIcon = () => (
     <polyline points="15,5 21,5 21,11" fill="none" stroke="#10d983" strokeWidth="1.8" strokeLinejoin="miter" />
   </svg>
 )
+const InvestmentsIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+    <ellipse cx="12" cy="7" rx="7" ry="2.4" fill="#FFB37C" stroke="#8a5a2a" strokeWidth="0.6" />
+    <path d="M5 7 V11 C5 12.3 8.1 13.4 12 13.4 C15.9 13.4 19 12.3 19 11 V7" fill="#FFB37C" stroke="#8a5a2a" strokeWidth="0.6" />
+    <path d="M5 11 V15 C5 16.3 8.1 17.4 12 17.4 C15.9 17.4 19 16.3 19 15 V11" fill="#FFB37C" stroke="#8a5a2a" strokeWidth="0.6" />
+  </svg>
+)
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: DashboardIcon },
+  { id: 'income', label: 'Income', icon: IncomeIcon },
+  { id: 'investments', label: 'Investments', icon: InvestmentsIcon },
   { id: 'expenses', label: 'Expenses', icon: ExpensesIcon },
   { id: 'cards', label: 'Credit Cards', icon: CreditCardsIcon },
-  { id: 'income', label: 'Income', icon: IncomeIcon },
 ]
 
 // How often to poll for a new service worker while the app stays open —
@@ -204,9 +213,10 @@ function AuthenticatedApp({ uid, pwaUpdate }) {
 
         <main className="app-main">
           {tab === 'dashboard' && <Dashboard uid={uid} />}
+          {tab === 'income' && <Income uid={uid} />}
+          {tab === 'investments' && <Investments uid={uid} />}
           {tab === 'expenses' && <Expenses uid={uid} />}
           {tab === 'cards' && <CreditCards uid={uid} />}
-          {tab === 'income' && <Income uid={uid} />}
         </main>
       </div>
 

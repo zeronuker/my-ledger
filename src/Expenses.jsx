@@ -10,7 +10,7 @@ import CategoryManagerModal from './CategoryManagerModal.jsx'
 // Fixed palette (not the user's single customizable accent — the point here
 // is several distinct hues, one per category) cycling if there are more
 // categories than colors.
-const CATEGORY_COLORS = ['#3FE0C5', '#3B8DFF', '#5B6BFF', '#FFB37C', '#10d983', '#f43f5e']
+const CATEGORY_COLORS = ['#3FE0C5', '#FFB37C', '#3B8DFF', '#10d983', '#5B6BFF', '#f43f5e']
 
 function formatMYR(n) {
   return `RM ${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -78,13 +78,15 @@ export default function Expenses({ uid }) {
 
   return (
     <section>
-      <h2 className="section-title">Expenses</h2>
-
       <div className="year-bar">
-        <label htmlFor="expense-year">Year</label>
-        <select id="expense-year" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
-          {years.map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
+        <div className="year-select-wrap">
+          <select
+            id="expense-year" className="year-select" aria-label="Year"
+            value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}
+          >
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
       </div>
 
       {loading || categories.loading || categoryGroups.loading ? <p className="dim">Loading…</p> : (
@@ -151,7 +153,7 @@ function CategoryGroupRows({ group, color, months, thisMonth, hiddenSet, entryBy
   return (
     <Fragment>
       <tr className="grid-group-row cat-colored" style={catStyle}>
-        <td>{group.name}</td>
+        <td><span className="group-name-badge">{group.name}</span></td>
         <td colSpan={months.length + 1}></td>
       </tr>
       {group.cats.map((c, ci) => {
