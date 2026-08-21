@@ -161,7 +161,7 @@ function CategoryGroupRows({ group, color, months, thisMonth, hiddenSet, entryBy
         const total = vals.reduce((a, b) => a + b, 0)
         return (
           <tr key={c.id} style={catStyle} className={ci % 2 === 0 ? 'row-even' : 'row-odd'}>
-            <td className="grid-row-cat"><span className="cat-colored">{c.name}</span></td>
+            <td className="grid-row-cat"><FitCategoryName name={c.name} /></td>
             {months.map((m) => {
               if (hiddenSet.has(m)) return <td key={m} className="td-stub" />
               const entry = entryByKey.get(`${c.id}_${m}`)
@@ -183,6 +183,26 @@ function CategoryGroupRows({ group, color, months, thisMonth, hiddenSet, entryBy
       })}
     </Fragment>
   )
+}
+
+// Shrinks font-size until the (now-wrappable) name fits the row's fixed
+// height instead of clipping — CSS caps the box at 25px so there's never a
+// layout flash before this corrects it.
+function FitCategoryName({ name }) {
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let size = 11.5
+    el.style.fontSize = `${size}px`
+    while (el.scrollHeight > el.clientHeight && size > 7) {
+      size -= 0.5
+      el.style.fontSize = `${size}px`
+    }
+  }, [name])
+
+  return <span ref={ref} className="cat-colored">{name}</span>
 }
 
 function EditableCell({ value, paid, hasValue, onCommit, onTogglePaid }) {
