@@ -193,7 +193,9 @@ body {
   position: relative;
   display: flex; gap: 0; align-items: flex-end; margin-bottom: 24px;
   overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none; -ms-overflow-style: none;
 }
+.app-tabs::-webkit-scrollbar { display: none; }
 .app-tabs::after {
   content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
   background: var(--cb-line); z-index: 0;
@@ -239,34 +241,12 @@ body {
   100% { opacity: 1; text-shadow: none; }
 }
 
-/* ---- Settings modal ---- */
-.modal-backdrop {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100;
-  display: flex; align-items: center; justify-content: center; padding: 20px;
-}
-.modal {
-  width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto;
-  background: var(--cb-surface-1); border: 1px solid var(--cb-line-2); border-radius: var(--cb-radius-lg);
-}
-.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--cb-line); }
-.modal-head h3 { margin: 0; font-family: var(--cb-font-display); font-weight: 700; font-size: 18px; color: var(--cb-ink); }
-.modal-x { background: none; border: none; color: var(--cb-ink-dim); font-size: 18px; cursor: pointer; }
-.modal-tabs { display: flex; gap: 2px; padding: 10px 16px 0; border-bottom: 1px solid var(--cb-line); }
-.mtab {
-  font-family: var(--cb-font-mono); font-weight: 700; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--cb-ink-dim); background: none; border: none; padding: 8px 10px; border-bottom: 2px solid transparent; cursor: pointer;
-}
-.mtab.active { color: var(--cb-mint); border-bottom-color: var(--cb-mint); }
-.modal-body { padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 18px; }
-.setting-row { display: flex; flex-direction: column; gap: 8px; }
-.setting-label { font-family: var(--cb-font-mono); font-weight: 700; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cb-ink-2); }
-.seg { display: inline-flex; border: 1px solid var(--cb-line-2); border-radius: 6px; overflow: hidden; width: fit-content; }
-.seg button {
-  font-family: var(--cb-font-mono); font-size: 11px; padding: 6px 14px; background: var(--cb-surface-2);
-  border: none; color: var(--cb-ink-dim); cursor: pointer; border-right: 1px solid var(--cb-line-2);
-}
-.seg button:last-child { border-right: none; }
-.seg button.on { background: var(--cb-mint); color: var(--cb-surface-0); font-weight: 700; }
+/* ---- Manage Categories modal — sm- chrome (see "Settings modal" block
+   below), with its own cmm- classes for the Add form and Arrange list. ---- */
+.cmm-modal { width: 480px; }
+.cmm-tabs { grid-template-columns: repeat(2, 1fr); }
+.cmm-inline-form { display: flex; gap: 8px; margin-top: 12px; }
+.cmm-inline-form .sm-input { flex: 1; }
 .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
 .swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
 .swatch.on { border-color: var(--cb-ink); }
@@ -345,7 +325,14 @@ select {
 }
 .range-chip.on { color: var(--cb-mint); border-color: var(--cb-mint); }
 .grid-wrap { overflow-x: auto; border: 1px solid var(--cb-line); border-radius: var(--cb-radius-md); }
-.grid-table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1500px; table-layout: fixed; font-family: var(--cb-font-mono); font-size: 12px; }
+/* width: max-content — NOT width:100%+min-width. With table-layout:fixed,
+   a table whose CSS width resolves below the sum of its column widths
+   renders at that (larger) sum instead; but if it resolves ABOVE the sum
+   (e.g. a fixed min-width once enough columns collapse to .th-stub), the
+   browser stretches every column to fill the gap. max-content pins the
+   table's width to exactly the sum of its fixed-px columns in every
+   hidden-column state, so there's never slack for columns to grow into. */
+.grid-table { border-collapse: separate; border-spacing: 0; width: max-content; table-layout: fixed; font-family: var(--cb-font-mono); font-size: 12px; }
 .grid-table th, .grid-table td {
   padding: 6px 8px; text-align: right; white-space: nowrap;
   border-bottom: 1px solid var(--cb-line); border-right: 1px solid var(--cb-line);
@@ -466,24 +453,25 @@ select {
 .fab:hover { filter: brightness(1.1); }
 
 /* ---- Category arrange list (CategoryManagerModal) ---- */
-.arrange-list { display: flex; flex-direction: column; gap: 10px; }
-.arrange-group { border: 1px solid var(--cb-line); border-radius: var(--cb-radius-sm); overflow: hidden; }
-.arrange-row {
-  display: flex; align-items: center; justify-content: space-between; padding: 8px 12px;
+.cmm-arrange { display: flex; flex-direction: column; gap: 10px; }
+.cmm-arrange-group { border: 1px solid var(--cb-line-2); }
+.cmm-arrange-head, .cmm-arrange-sub {
+  display: flex; align-items: center; justify-content: space-between; padding: 9px 12px;
   border-bottom: 1px solid var(--cb-line); font-family: var(--cb-font-mono); font-size: 12px;
 }
-.arrange-row:last-child { border-bottom: none; }
-.arrange-row--group { background: var(--cb-surface-2); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; font-size: 11px; }
-.arrange-row--sub { padding-left: 24px; color: var(--cb-ink-2); }
-.arrange-arrows { display: flex; gap: 4px; }
-.arrange-arrows button {
-  width: 22px; height: 22px; background: var(--cb-surface-2); border: 1px solid var(--cb-line-2); border-radius: 4px;
-  color: var(--cb-ink-dim); cursor: pointer; font-size: 11px; padding: 0;
+.cmm-arrange-head:last-child, .cmm-arrange-sub:last-child { border-bottom: none; }
+.cmm-arrange-head { background: var(--cb-surface-0); }
+.cmm-arrange-name { font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-size: 10.5px; color: var(--cb-ink); }
+.cmm-arrange-sub { padding-left: 26px; color: var(--cb-ink-2); }
+.cmm-arrange-btns { display: flex; gap: 4px; }
+.cmm-arrange-btns button {
+  width: 22px; height: 22px; background: none; border: 1px solid var(--cb-line-2);
+  color: var(--cb-ink-dim); cursor: pointer; font-size: 11px; padding: 0; font-family: inherit;
 }
-.arrange-arrows button:hover:not(:disabled) { color: var(--cb-ink); border-color: var(--cb-mint); }
-.arrange-arrows button:disabled { opacity: 0.3; cursor: default; }
-.arrange-arrows button.arrange-delete:not(:disabled) { color: #ff6b6b; border-color: color-mix(in srgb, #ff6b6b 45%, transparent); }
-.arrange-arrows button.arrange-delete:hover:not(:disabled) { border-color: #ff6b6b; }
+.cmm-arrange-btns button:hover:not(:disabled) { color: var(--cb-ink); border-color: var(--cb-mint); }
+.cmm-arrange-btns button:disabled { opacity: 0.3; cursor: default; }
+.cmm-arrange-btns button.del:not(:disabled) { color: #ff6b6b; border-color: color-mix(in srgb, #ff6b6b 45%, transparent); }
+.cmm-arrange-btns button.del:hover:not(:disabled) { border-color: #ff6b6b; }
 
 /* ---- Income statement ---- */
 .income-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
@@ -510,6 +498,12 @@ select {
 .income-line .lbl { color: var(--cb-ink-2); }
 .income-line .amt { font-weight: 600; font-variant-numeric: tabular-nums; }
 .income-line.sub .amt { color: #f43f5e; }
+.income-line .cell-inner { flex-shrink: 0; width: 130px; }
+
+/* ---- Expenses Month layout (Layout B) — group header bar for the
+   income-stmt list; category rows reuse .income-line + EditableCell. ---- */
+.expl-group-head { display: flex; align-items: center; padding: 9px 16px; background: color-mix(in srgb, var(--cat-color) 14%, var(--cb-surface-3)); }
+.expl-group-total { margin-left: auto; font-family: var(--cb-font-mono); font-size: 10.5px; color: var(--cb-ink-dim); }
 .income-input-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 16px; }
 .income-input-grid .field { display: flex; flex-direction: column; gap: 4px; }
 .income-input-grid .field label { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #FFB37C; }

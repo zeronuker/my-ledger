@@ -4,7 +4,7 @@ import { useCategories } from './useCategories'
 import { useCategoryGroups } from './useCategoryGroups'
 import { useLedgerData } from './LedgerDataContext'
 import { DEFAULT_EXPENSE_CATEGORIES } from './categories'
-import { monthLabel, monthNameFull, monthRange, currentMonth } from './months'
+import { monthLabel, monthNameFull, monthRange, currentMonth, addMonths } from './months'
 import CategoryManagerModal from './CategoryManagerModal.jsx'
 import FitText from './FitText.jsx'
 
@@ -17,7 +17,7 @@ function formatMYR(n) {
   return `RM ${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-export default function Expenses({ uid }) {
+export default function Expenses({ uid, layout = 'grid' }) {
   const { items, loading, setEntry, setPaid } = useExpenseEntries(uid)
   const categories = useCategories(uid, 'expenseCategories', DEFAULT_EXPENSE_CATEGORIES)
   const categoryGroups = useCategoryGroups(uid)
@@ -29,6 +29,7 @@ export default function Expenses({ uid }) {
   const thisMonth = currentMonth()
   const thisYear = thisMonth.slice(0, 4)
   const [selectedYear, setSelectedYear] = useState(thisYear)
+  const [viewMonth, setViewMonth] = useState(thisMonth)
   const isCurrentYear = selectedYear === thisYear
   const years = useMemo(() => Array.from({ length: 6 }, (_, i) => String(Number(thisYear) + i)), [thisYear])
 
@@ -77,6 +78,13 @@ export default function Expenses({ uid }) {
     })
   }
 
+  function stepViewMonth(delta) {
+    const next = addMonths(viewMonth, delta)
+    setViewMonth(next)
+    const nextYear = next.slice(0, 4)
+    if (nextYear !== selectedYear) setSelectedYear(nextYear)
+  }
+
   return (
     <section>
       <div className="year-bar">
@@ -90,52 +98,17 @@ export default function Expenses({ uid }) {
         </div>
       </div>
 
-      {loading || categories.loading || categoryGroups.loading ? <p className="dim">Loading…</p> : (
-        <div className="grid-wrap">
-          <table className="grid-table">
-            <thead>
-              <tr>
-                <th></th>
-                {allMonths.map((m) => {
-                  if (hiddenSet.has(m)) {
-                    return (
-                      <th key={m} className="th-stub" onClick={() => toggleMonth(m)} title="Hidden — click to reveal">
-                        <span className="th-stub-label">{monthLabel(m).split(' ')[0].toUpperCase()}</span>
-                      </th>
-                    )
-                  }
-                  const hideable = isCurrentYear && m < thisMonth
-                  return (
-                    <th
-                      key={m}
-                      className={`${m === thisMonth ? 'th-current col-current' : ''}${hideable ? ' th-hideable' : ''}`}
-                      onClick={hideable ? () => toggleMonth(m) : undefined}
-                      title={hideable ? 'Hide this month' : undefined}
-                    >
-                      <span className="month-header-badge">{monthNameFull(m)}</span>
-                    </th>
-                  )
-                })}
-                <th className="col-total"><span className="month-header-badge">Total</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((g, gi) => (
-                <CategoryGroupRows
-                  key={g.name} group={g} color={CATEGORY_COLORS[gi % CATEGORY_COLORS.length]}
-                  months={allMonths} thisMonth={thisMonth} hiddenSet={hiddenSet} entryByKey={entryByKey} setEntry={setEntry} setPaid={setPaid}
-                />
-              ))}
-              <tr className="grid-total-row">
-                <td>Total</td>
-                {allMonths.map((m, i) => (
-                  hiddenSet.has(m) ? <td key={m} className="td-stub" /> : <td key={m} className={m === thisMonth ? 'col-current' : ''}>{formatMYR(monthTotals[i])}</td>
-                ))}
-                <td className="col-total">{formatMYR(grandTotal)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      {loading || categories.loading || categoryGroups.loading ? <p className="dim">Loading…</p> : layout === 'month' ? (
+        <MonthLayout
+          viewMonth={viewMonth} thisMonth={thisMonth} onStep={stepViewMonth}
+          groups={groups} entryByKey={entryByKey} setEntry={setEntry} setPaid={setPaid}
+        />
+      ) : (
+        <GridLayout
+          allMonths={allMonths} thisMonth={thisMonth} isCurrentYear={isCurrentYear} hiddenSet={hiddenSet} toggleMonth={toggleMonth}
+          groups={groups} entryByKey={entryByKey} setEntry={setEntry} setPaid={setPaid}
+          monthTotals={monthTotals} grandTotal={grandTotal}
+        />
       )}
 
       <button className="fab" onClick={() => setManagerOpen(true)} title="Add or arrange categories">+</button>
@@ -146,6 +119,59 @@ export default function Expenses({ uid }) {
         />
       )}
     </section>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  LAYOUT A — GRID (default)
+// ════════════════════════════════════════════════════════════════════
+function GridLayout({ allMonths, thisMonth, isCurrentYear, hiddenSet, toggleMonth, groups, entryByKey, setEntry, setPaid, monthTotals, grandTotal }) {
+  return (
+    <div className="grid-wrap">
+      <table className="grid-table">
+        <thead>
+          <tr>
+            <th></th>
+            {allMonths.map((m) => {
+              if (hiddenSet.has(m)) {
+                return (
+                  <th key={m} className="th-stub" onClick={() => toggleMonth(m)} title="Hidden — click to reveal">
+                    <span className="th-stub-label">{monthLabel(m).split(' ')[0].toUpperCase()}</span>
+                  </th>
+                )
+              }
+              const hideable = isCurrentYear && m < thisMonth
+              return (
+                <th
+                  key={m}
+                  className={`${m === thisMonth ? 'th-current col-current' : ''}${hideable ? ' th-hideable' : ''}`}
+                  onClick={hideable ? () => toggleMonth(m) : undefined}
+                  title={hideable ? 'Hide this month' : undefined}
+                >
+                  <span className="month-header-badge">{monthNameFull(m)}</span>
+                </th>
+              )
+            })}
+            <th className="col-total"><span className="month-header-badge">Total</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.map((g, gi) => (
+            <CategoryGroupRows
+              key={g.name} group={g} color={CATEGORY_COLORS[gi % CATEGORY_COLORS.length]}
+              months={allMonths} thisMonth={thisMonth} hiddenSet={hiddenSet} entryByKey={entryByKey} setEntry={setEntry} setPaid={setPaid}
+            />
+          ))}
+          <tr className="grid-total-row">
+            <td>Total</td>
+            {allMonths.map((m, i) => (
+              hiddenSet.has(m) ? <td key={m} className="td-stub" /> : <td key={m} className={m === thisMonth ? 'col-current' : ''}>{formatMYR(monthTotals[i])}</td>
+            ))}
+            <td className="col-total">{formatMYR(grandTotal)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -183,6 +209,78 @@ function CategoryGroupRows({ group, color, months, thisMonth, hiddenSet, entryBy
         )
       })}
     </Fragment>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  LAYOUT B — MONTH — one month at a time, stat tiles plus category
+//  totals. Mirrors Income's Card/Dashboard layouts (income-stmt/income-head/
+//  seg/stat-grid), applied to Expenses' own group → category data.
+// ════════════════════════════════════════════════════════════════════
+function MonthLayout({ viewMonth, thisMonth, onStep, groups, entryByKey, setEntry, setPaid }) {
+  let total = 0, paidTotal = 0, unpaidTotal = 0
+  groups.forEach((g) => g.cats.forEach((c) => {
+    const entry = entryByKey.get(`${c.id}_${viewMonth}`)
+    if (!entry) return
+    total += entry.amount
+    if (entry.paid) paidTotal += entry.amount
+    else unpaidTotal += entry.amount
+  }))
+
+  return (
+    <div style={{ maxWidth: 640 }}>
+      <div className="income-head">
+        <div className="seg">
+          <button onClick={() => onStep(-1)}>&larr;</button>
+          <button className="on">{monthLabel(viewMonth)}{viewMonth === thisMonth ? ' · current' : ''}</button>
+          <button onClick={() => onStep(1)}>&rarr;</button>
+        </div>
+      </div>
+
+      <div className="stat-grid" style={{ marginBottom: 20 }}>
+        <div className="stat-tile"><div className="cb-eyebrow">Total this month</div><div className="stat-value">{formatMYR(total)}</div></div>
+        <div className="stat-tile" style={{ borderColor: 'var(--cb-mint)' }}><div className="cb-eyebrow">Paid</div><div className="stat-value" style={{ color: 'var(--cb-mint)' }}>{formatMYR(paidTotal)}</div></div>
+        <div className="stat-tile" style={{ borderColor: '#ff9f4a' }}><div className="cb-eyebrow">Unpaid</div><div className="stat-value" style={{ color: '#ff9f4a' }}>{formatMYR(unpaidTotal)}</div></div>
+      </div>
+
+      <div className="income-stmt">
+        {groups.map((g, gi) => (
+          <MonthGroup
+            key={g.name} group={g} color={CATEGORY_COLORS[gi % CATEGORY_COLORS.length]}
+            viewMonth={viewMonth} entryByKey={entryByKey} setEntry={setEntry} setPaid={setPaid}
+          />
+        ))}
+        {groups.length === 0 && <p className="dim" style={{ padding: 16, margin: 0 }}>No categories yet — add one from the + button.</p>}
+        <div className="income-calc net"><span className="label">Total — {monthLabel(viewMonth)}</span><span className="amt">{formatMYR(total)}</span></div>
+      </div>
+    </div>
+  )
+}
+
+function MonthGroup({ group, color, viewMonth, entryByKey, setEntry, setPaid }) {
+  const groupTotal = group.cats.reduce((s, c) => s + (entryByKey.get(`${c.id}_${viewMonth}`)?.amount || 0), 0)
+  return (
+    <div>
+      <div className="expl-group-head cat-colored" style={{ '--cat-color': color }}>
+        <span className="group-name-badge">{group.name}</span>
+        <span className="expl-group-total">{formatMYR(groupTotal)}</span>
+      </div>
+      {group.cats.map((c) => {
+        const entry = entryByKey.get(`${c.id}_${viewMonth}`)
+        return (
+          <div key={c.id} className="income-line">
+            <span className="lbl">{c.name}</span>
+            <EditableCell
+              value={entry?.amount}
+              paid={!!entry?.paid}
+              hasValue={!!entry}
+              onCommit={(amt) => setEntry(c.id, viewMonth, amt)}
+              onTogglePaid={() => setPaid(c.id, viewMonth, !entry?.paid)}
+            />
+          </div>
+        )
+      })}
+    </div>
   )
 }
 

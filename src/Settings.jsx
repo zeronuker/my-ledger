@@ -6,7 +6,7 @@ import {
 import { auth } from './firebase'
 import { clearAllCloudData } from './cloudSync'
 import { clearLocalData } from './localStore'
-import { ACCENT_PRESETS, FONT_CHOICES, DEFAULT_SETTINGS, INCOME_LAYOUTS } from './theme'
+import { ACCENT_PRESETS, FONT_CHOICES, DEFAULT_SETTINGS, INCOME_LAYOUTS, EXPENSES_LAYOUTS } from './theme'
 import { SmSectionHead, SmField, SmRow, SmSegmented, SmSlider, SmCloseIcon } from './SettingsControls.jsx'
 import { CHANGELOG } from './changelog'
 
@@ -229,14 +229,24 @@ function AppearanceTab({ d, upd }) {
 // ════════════════════════════════════════════════════════════════════
 function PreferencesTab({ settings, update }) {
   const incomeLayout = settings.incomeLayout || DEFAULT_SETTINGS.incomeLayout
-  const active = INCOME_LAYOUTS.find((l) => l.value === incomeLayout)
+  const activeIncome = INCOME_LAYOUTS.find((l) => l.value === incomeLayout)
+  const expensesLayout = settings.expensesLayout || DEFAULT_SETTINGS.expensesLayout
+  const activeExpenses = EXPENSES_LAYOUTS.find((l) => l.value === expensesLayout)
   return (
     <div className="sm-tab-content">
       <SmSectionHead title="Income Layout" hint="// how the Income tab displays your salary" />
-      <SmField label="Layout" hint={active?.hint}>
+      <SmField label="Layout" hint={activeIncome?.hint}>
         <SmSegmented
           value={incomeLayout} onChange={(v) => update({ incomeLayout: v })}
           options={INCOME_LAYOUTS.map((l) => ({ value: l.value, label: l.label }))}
+        />
+      </SmField>
+
+      <SmSectionHead title="Expenses Layout" hint="// how the Expenses tab displays your spending" />
+      <SmField label="Layout" hint={activeExpenses?.hint}>
+        <SmSegmented
+          value={expensesLayout} onChange={(v) => update({ expensesLayout: v })}
+          options={EXPENSES_LAYOUTS.map((l) => ({ value: l.value, label: l.label }))}
         />
       </SmField>
     </div>

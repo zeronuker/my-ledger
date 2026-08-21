@@ -33,6 +33,7 @@ export const DEFAULT_SETTINGS = {
   fontSize: 14,
   density: 'default',
   incomeLayout: 'grid',
+  expensesLayout: 'grid',
 }
 
 export const INCOME_LAYOUTS = [
@@ -40,6 +41,11 @@ export const INCOME_LAYOUTS = [
   { value: 'card', label: 'Card', hint: 'One month at a time, stepped with arrows' },
   { value: 'dashboard', label: 'Dashboard', hint: 'This month as stat tiles plus a trend line' },
   { value: 'timeline', label: 'Timeline', hint: 'Every month as a collapsible row' },
+]
+
+export const EXPENSES_LAYOUTS = [
+  { value: 'grid', label: 'Grid', hint: 'All months as columns — the default' },
+  { value: 'month', label: 'Month', hint: 'One month at a time, stat tiles plus category totals' },
 ]
 
 function resolveAccent(settings) {
