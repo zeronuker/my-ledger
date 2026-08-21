@@ -367,6 +367,9 @@ select {
   padding-left: 8px; display: inline-block;
   max-height: 25px; overflow: hidden; /* matches the row's fixed content height (set by the amount cell) */
 }
+.grid-row-cat .fit-text-plain {
+  display: inline-block; max-height: 25px; overflow: hidden;
+}
 .row-even td:not(.col-current):not(:first-child):not(.td-stub):not(.is-input) { background: var(--cb-surface-1); }
 .row-odd td:not(.col-current):not(:first-child):not(.td-stub):not(.is-input) { background: transparent; }
 .grid-table td.is-input { background: color-mix(in srgb, #FFB37C 8%, transparent); }

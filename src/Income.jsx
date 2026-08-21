@@ -3,6 +3,7 @@ import { useCollection } from './useCollection'
 import { useLedgerData } from './LedgerDataContext'
 import { monthNameFull, monthLabel, monthRange, currentMonth, addMonths } from './months'
 import { computeYear, computeYtd, emptyMonthInput } from './incomeCalc'
+import FitText from './FitText.jsx'
 
 function formatMYR(n) {
   return `RM ${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -26,8 +27,19 @@ export default function Income({ uid, layout = 'grid' }) {
   const thisYear = thisMonth.slice(0, 4)
   const [selectedYear, setSelectedYear] = useState(thisYear)
   const [viewMonth, setViewMonth] = useState(thisMonth)
+  const [hiddenMonths, setHiddenMonths] = useState(() => new Set())
+  const isCurrentYear = selectedYear === thisYear
+  const hiddenSet = isCurrentYear ? hiddenMonths : new Set()
   const years = useMemo(() => Array.from({ length: 6 }, (_, i) => String(Number(thisYear) + i)), [thisYear])
   const allMonths = useMemo(() => monthRange(`${selectedYear}-01`, `${selectedYear}-12`), [selectedYear])
+
+  function toggleMonth(m) {
+    setHiddenMonths((prev) => {
+      const next = new Set(prev)
+      next.has(m) ? next.delete(m) : next.add(m)
+      return next
+    })
+  }
 
   function stepViewMonth(delta) {
     const next = addMonths(viewMonth, delta)
@@ -82,8 +94,6 @@ export default function Income({ uid, layout = 'grid' }) {
 
   return (
     <section>
-      <h2 className="section-title">Income</h2>
-
       <div className="year-bar">
         <div className="year-select-wrap">
           <select
@@ -120,8 +130,8 @@ export default function Income({ uid, layout = 'grid' }) {
           )}
           {(!layout || layout === 'grid') && (
             <GridLayout
-              allMonths={allMonths} thisMonth={thisMonth} byMonth={byMonth} inputByMonth={inputByMonth}
-              ytd={ytd} updateMonth={updateMonth}
+              allMonths={allMonths} thisMonth={thisMonth} isCurrentYear={isCurrentYear} hiddenSet={hiddenSet} toggleMonth={toggleMonth}
+              byMonth={byMonth} inputByMonth={inputByMonth} ytd={ytd} updateMonth={updateMonth}
             />
           )}
         </>
@@ -131,71 +141,98 @@ export default function Income({ uid, layout = 'grid' }) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  LAYOUT A — GRID (default)
+//  LAYOUT A — GRID (default) — mirrors Expenses' grid behaviour exactly:
+//  striped sub-rows (reset per section), hideable past months, and
+//  wrap-then-shrink row labels.
 // ════════════════════════════════════════════════════════════════════
-function GridLayout({ allMonths, thisMonth, byMonth, inputByMonth, ytd, updateMonth }) {
+const GRID_ROWS = [
+  { type: 'group', label: 'Monthly Inputs', color: '#FFB37C' },
+  { type: 'input', label: 'Flight Hours', field: 'hours', decimals: 2 },
+  { type: 'input', label: 'Sectors Flown', field: 'sectors', decimals: 0 },
+  { type: 'input', label: 'Nightstop Dom (RM50)', field: 'nightstopDom', decimals: 0 },
+  { type: 'input', label: 'Nightstop Intl1 (RM120)', field: 'nightstopIntl1', decimals: 0 },
+  { type: 'input', label: 'Nightstop Intl2 (RM180)', field: 'nightstopIntl2', decimals: 0 },
+  { type: 'input', label: 'Nightstop Intl3 (RM250)', field: 'nightstopIntl3', decimals: 0 },
+  { type: 'input', label: 'Bonus / Renumeration', field: 'bonus', decimals: 2, money: true },
+
+  { type: 'group', label: 'Earnings', color: 'var(--cb-mint)' },
+  { type: 'calc', label: 'Basic Salary', field: 'basic' },
+  { type: 'calc', label: 'Meal + Nightstop Allowance', field: 'productivityAllowance' },
+  { type: 'calc', label: 'Performance Allowance', field: 'performanceAllowance' },
+  { type: 'subtotal', label: 'Gross Salary', field: 'gross' },
+
+  { type: 'group', label: 'Employee Deductions', color: '#f43f5e' },
+  { type: 'calc', label: 'EPF (11%)', field: 'epfEmployee', deduction: true },
+  { type: 'calc', label: 'SOCSO', field: 'socsoEmployee', deduction: true },
+  { type: 'calc', label: 'SKBBK', field: 'skbbk', deduction: true, blankIfZero: true },
+  { type: 'calc', label: 'EIS', field: 'eisEmployee', deduction: true },
+  { type: 'calc', label: 'PCB (income tax)', field: 'pcb', deduction: true },
+  { type: 'calc', label: 'Zakat Pendapatan', field: 'zakat', deduction: true },
+  { type: 'input', label: 'Adjustment', field: 'adjustment', decimals: 2, money: true, optional: true },
+  { type: 'total', label: 'Net Salary', field: 'net' },
+
+  { type: 'group', label: 'Employer Contributions', color: 'var(--cb-blue)' },
+  { type: 'calc', label: 'Employer EPF (12%)', field: 'epfEmployer' },
+  { type: 'calc', label: 'Employer SOCSO', field: 'socsoEmployer' },
+  { type: 'calc', label: 'Employer EIS', field: 'eisEmployer' },
+
+  { type: 'group', label: 'Year-to-Date', color: 'var(--cb-ink-dim)' },
+  { type: 'ytd', label: 'YTD Basic', field: 'basic' },
+  { type: 'ytd', label: 'YTD Gross', field: 'gross' },
+  { type: 'ytd', label: 'YTD Employee EPF', field: 'epfEmployee' },
+  { type: 'ytd', label: 'YTD Employer EPF', field: 'epfEmployer' },
+  { type: 'ytd', label: 'YTD Employee SOCSO', field: 'socsoEmployee' },
+  { type: 'ytd', label: 'YTD Employer SOCSO', field: 'socsoEmployer' },
+  { type: 'ytd', label: 'YTD Employee EIS', field: 'eisEmployee' },
+  { type: 'ytd', label: 'YTD Employer EIS', field: 'eisEmployer' },
+  { type: 'ytd', label: 'YTD Income Tax PCB', field: 'pcb' },
+  { type: 'ytd', label: 'YTD Net', field: 'net', bold: true },
+]
+
+function GridLayout({ allMonths, thisMonth, isCurrentYear, hiddenSet, toggleMonth, byMonth, inputByMonth, ytd, updateMonth }) {
+  let stripeIdx = 0
   return (
     <div className="grid-wrap">
       <table className="grid-table">
         <thead>
           <tr>
             <th></th>
-            {allMonths.map((m) => (
-              <th key={m} className={m === thisMonth ? 'th-current col-current' : ''}>
-                <span className="month-header-badge">{monthNameFull(m)}</span>
-              </th>
-            ))}
+            {allMonths.map((m) => {
+              if (hiddenSet.has(m)) {
+                return (
+                  <th key={m} className="th-stub" onClick={() => toggleMonth(m)} title="Hidden — click to reveal">
+                    <span className="th-stub-label">{monthLabel(m).split(' ')[0].toUpperCase()}</span>
+                  </th>
+                )
+              }
+              const hideable = isCurrentYear && m < thisMonth
+              return (
+                <th
+                  key={m}
+                  className={`${m === thisMonth ? 'th-current col-current' : ''}${hideable ? ' th-hideable' : ''}`}
+                  onClick={hideable ? () => toggleMonth(m) : undefined}
+                  title={hideable ? 'Hide this month' : undefined}
+                >
+                  <span className="month-header-badge">{monthNameFull(m)}</span>
+                </th>
+              )
+            })}
           </tr>
         </thead>
         <tbody>
-          <GroupRow label="Monthly Inputs" color="#FFB37C" span={allMonths.length + 1} />
-          <InputRow label="Flight Hours" months={allMonths} thisMonth={thisMonth} decimals={2}
-            get={(m) => inputByMonth.get(m).hours} onCommit={(m, v) => updateMonth(m, { hours: v })} />
-          <InputRow label="Sectors Flown" months={allMonths} thisMonth={thisMonth} decimals={0}
-            get={(m) => inputByMonth.get(m).sectors} onCommit={(m, v) => updateMonth(m, { sectors: v })} />
-          {NIGHTSTOP_FIELDS.map(({ key, label }) => (
-            <InputRow key={key} label={`Nightstop ${label}`} months={allMonths} thisMonth={thisMonth} decimals={0}
-              get={(m) => inputByMonth.get(m)[key]} onCommit={(m, v) => updateMonth(m, { [key]: v })} />
-          ))}
-          <InputRow label="Bonus / Renumeration" months={allMonths} thisMonth={thisMonth} decimals={2} money
-            get={(m) => inputByMonth.get(m).bonus} onCommit={(m, v) => updateMonth(m, { bonus: v })} />
-
-          <GroupRow label="Earnings" color="var(--cb-mint)" span={allMonths.length + 1} />
-          <CalcRow label="Basic Salary" months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).basic)} />
-          <CalcRow label="Meal + Nightstop Allowance" months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).productivityAllowance)} />
-          <CalcRow label="Performance Allowance" months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).performanceAllowance)} />
-          <CalcRow label="Gross Salary" bold months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).gross)} />
-
-          <GroupRow label="Employee Deductions" color="#f43f5e" span={allMonths.length + 1} />
-          <CalcRow label="EPF (11%)" months={allMonths} thisMonth={thisMonth} get={(m) => '−' + formatMYR(byMonth.get(m).epfEmployee)} />
-          <CalcRow label="SOCSO" months={allMonths} thisMonth={thisMonth} get={(m) => '−' + formatMYR(byMonth.get(m).socsoEmployee)} />
-          <CalcRow label="SKBBK" months={allMonths} thisMonth={thisMonth} get={(m) => byMonth.get(m).skbbk ? '−' + formatMYR(byMonth.get(m).skbbk) : '—'} />
-          <CalcRow label="EIS" months={allMonths} thisMonth={thisMonth} get={(m) => '−' + formatMYR(byMonth.get(m).eisEmployee)} />
-          <CalcRow label="PCB (income tax)" months={allMonths} thisMonth={thisMonth} get={(m) => '−' + formatMYR(byMonth.get(m).pcb)} />
-          <CalcRow label="Zakat Pendapatan" months={allMonths} thisMonth={thisMonth} get={(m) => '−' + formatMYR(byMonth.get(m).zakat)} />
-          <InputRow label="Adjustment" months={allMonths} thisMonth={thisMonth} decimals={2} money optional
-            get={(m) => inputByMonth.get(m).adjustment} onCommit={(m, v) => updateMonth(m, { adjustment: v })} />
-          <tr className="grid-total-row net-highlight">
-            <td>Net Salary</td>
-            {allMonths.map((m) => <td key={m} className={m === thisMonth ? 'col-current' : ''}>{formatMYR(byMonth.get(m).net)}</td>)}
-          </tr>
-
-          <GroupRow label="Employer Contributions" color="var(--cb-blue)" span={allMonths.length + 1} />
-          <CalcRow label="Employer EPF (12%)" months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).epfEmployer)} />
-          <CalcRow label="Employer SOCSO" months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).socsoEmployer)} />
-          <CalcRow label="Employer EIS" months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).eisEmployer)} />
-
-          <GroupRow label="Year-to-Date" color="var(--cb-ink-dim)" span={allMonths.length + 1} />
-          <YtdRow label="YTD Basic" months={allMonths} ytd={ytd} field="basic" />
-          <YtdRow label="YTD Gross" months={allMonths} ytd={ytd} field="gross" />
-          <YtdRow label="YTD Employee EPF" months={allMonths} ytd={ytd} field="epfEmployee" />
-          <YtdRow label="YTD Employer EPF" months={allMonths} ytd={ytd} field="epfEmployer" />
-          <YtdRow label="YTD Employee SOCSO" months={allMonths} ytd={ytd} field="socsoEmployee" />
-          <YtdRow label="YTD Employer SOCSO" months={allMonths} ytd={ytd} field="socsoEmployer" />
-          <YtdRow label="YTD Employee EIS" months={allMonths} ytd={ytd} field="eisEmployee" />
-          <YtdRow label="YTD Employer EIS" months={allMonths} ytd={ytd} field="eisEmployer" />
-          <YtdRow label="YTD Income Tax PCB" months={allMonths} ytd={ytd} field="pcb" />
-          <YtdRow label="YTD Net" months={allMonths} ytd={ytd} field="net" bold />
+          {GRID_ROWS.map((row, i) => {
+            if (row.type === 'group') {
+              stripeIdx = 0
+              return <GroupRow key={i} label={row.label} color={row.color} span={allMonths.length + 1} />
+            }
+            const striped = stripeIdx++ % 2 === 0 ? 'row-even' : 'row-odd'
+            return (
+              <DataRow
+                key={i} row={row} striped={striped} months={allMonths} thisMonth={thisMonth} hiddenSet={hiddenSet}
+                byMonth={byMonth} inputByMonth={inputByMonth} ytd={ytd} updateMonth={updateMonth}
+              />
+            )
+          })}
         </tbody>
       </table>
     </div>
@@ -210,32 +247,47 @@ function GroupRow({ label, color, span }) {
     </tr>
   )
 }
-function CalcRow({ label, months, thisMonth, get, bold }) {
+
+function DataRow({ row, striped, months, thisMonth, hiddenSet, byMonth, inputByMonth, ytd, updateMonth }) {
+  const isTotal = row.type === 'total'
+  const isSubtotal = row.type === 'subtotal'
+  const trClass = isTotal ? 'grid-total-row net-highlight' : striped
+  const labelStyle = isTotal ? { fontWeight: 700, color: 'var(--cb-mint)' } : isSubtotal ? { fontWeight: 700 } : undefined
+
   return (
-    <tr>
-      <td style={bold ? { fontWeight: 700 } : undefined}>{label}</td>
-      {months.map((m) => <td key={m} className={m === thisMonth ? 'col-current' : ''} style={bold ? { fontWeight: 700 } : undefined}>{get(m)}</td>)}
-    </tr>
-  )
-}
-function YtdRow({ label, months, ytd, field, bold }) {
-  const style = bold ? { fontWeight: 700, color: 'var(--cb-mint)' } : undefined
-  return (
-    <tr>
-      <td style={style}>{label}</td>
-      {months.map((m, i) => <td key={m} style={style}>{formatMYR(ytd[i]?.[field])}</td>)}
-    </tr>
-  )
-}
-function InputRow({ label, months, thisMonth, get, onCommit, decimals, money, optional }) {
-  return (
-    <tr>
-      <td>{label}</td>
-      {months.map((m) => (
-        <td key={m} className={`is-input${m === thisMonth ? ' col-current' : ''}`}>
-          <NumberCell value={get(m)} decimals={decimals} money={money} optional={optional} onCommit={(v) => onCommit(m, v)} />
-        </td>
-      ))}
+    <tr className={trClass}>
+      {isTotal || isSubtotal ? (
+        <td style={labelStyle}>{row.label}</td>
+      ) : (
+        <td className="grid-row-cat"><FitText text={row.label} className="fit-text-plain" /></td>
+      )}
+      {months.map((m) => {
+        if (hiddenSet.has(m)) return <td key={m} className="td-stub" />
+        const curCls = m === thisMonth ? 'col-current' : ''
+
+        if (row.type === 'input') {
+          const val = inputByMonth.get(m)[row.field]
+          return (
+            <td key={m} className={`is-input ${curCls}`}>
+              <NumberCell
+                value={val} decimals={row.decimals} money={row.money} optional={row.optional}
+                onCommit={(v) => updateMonth(m, { [row.field]: v })}
+              />
+            </td>
+          )
+        }
+        if (row.type === 'ytd') {
+          const idx = months.indexOf(m)
+          return <td key={m} className={curCls} style={row.bold ? { fontWeight: 700, color: 'var(--cb-mint)' } : undefined}>{formatMYR(ytd[idx]?.[row.field])}</td>
+        }
+        // calc / subtotal / total
+        const result = byMonth.get(m)
+        const raw = result[row.field]
+        const display = row.deduction
+          ? (row.blankIfZero && !raw ? '—' : '−' + formatMYR(raw))
+          : formatMYR(raw)
+        return <td key={m} className={curCls} style={labelStyle}>{display}</td>
+      })}
     </tr>
   )
 }
