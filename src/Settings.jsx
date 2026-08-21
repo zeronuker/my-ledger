@@ -71,8 +71,14 @@ export default function Settings({ uid, settings, update, pwaUpdate, onPreview, 
     setDraft((prev) => ({ ...prev, ...patch }))
   }
 
+  // Only Appearance fields are ever part of `draft` — Preferences/Account
+  // settings (e.g. incomeLayout) apply instantly via their own `update()`
+  // calls and must never be touched here, or this would blindly re-apply a
+  // draft snapshot frozen at modal-open time and clobber anything changed
+  // live since then.
   function handleSave() {
-    update(draft)
+    const patch = Object.fromEntries(APPEARANCE_KEYS.map((k) => [k, draft[k]]))
+    update(patch)
     onPreview?.(null)
     setSavedFlash(true)
     setTimeout(() => setSavedFlash(false), 3000)
