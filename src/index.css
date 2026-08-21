@@ -367,8 +367,8 @@ select {
   padding-left: 8px; display: inline-block;
   max-height: 25px; overflow: hidden; /* matches the row's fixed content height (set by the amount cell) */
 }
-.row-even td:not(.col-current):not(:first-child) { background: var(--cb-surface-1); }
-.row-odd td:not(.col-current):not(:first-child) { background: transparent; }
+.row-even td:not(.col-current):not(:first-child):not(.td-stub) { background: var(--cb-surface-1); }
+.row-odd td:not(.col-current):not(:first-child):not(.td-stub) { background: transparent; }
 .grid-group-row td {
   background: var(--cb-surface-3); font-weight: 700; text-align: left;
   letter-spacing: 0.08em; text-transform: uppercase; font-size: 13px;
@@ -435,8 +435,8 @@ select {
 .grid-table td.td-stub {
   background: repeating-linear-gradient(
     -45deg,
-    color-mix(in srgb, var(--cb-ink) 10%, transparent),
-    color-mix(in srgb, var(--cb-ink) 10%, transparent) 3px,
+    rgba(0, 0, 0, 0.32),
+    rgba(0, 0, 0, 0.32) 3px,
     transparent 3px, transparent 7px
   );
 }
