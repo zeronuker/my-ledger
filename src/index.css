@@ -367,8 +367,12 @@ select {
   padding-left: 8px; display: inline-block;
   max-height: 25px; overflow: hidden; /* matches the row's fixed content height (set by the amount cell) */
 }
-.row-even td:not(.col-current):not(:first-child):not(.td-stub) { background: var(--cb-surface-1); }
-.row-odd td:not(.col-current):not(:first-child):not(.td-stub) { background: transparent; }
+.row-even td:not(.col-current):not(:first-child):not(.td-stub):not(.is-input) { background: var(--cb-surface-1); }
+.row-odd td:not(.col-current):not(:first-child):not(.td-stub):not(.is-input) { background: transparent; }
+.grid-table td.is-input { background: color-mix(in srgb, #FFB37C 8%, transparent); }
+.grid-total-row.net-highlight td {
+  background: color-mix(in srgb, var(--cb-mint) 12%, var(--cb-surface-2)); font-weight: 800; color: var(--cb-mint); border-top: 2px solid var(--cb-mint);
+}
 .grid-group-row td {
   background: var(--cb-surface-3); font-weight: 700; text-align: left;
   letter-spacing: 0.08em; text-transform: uppercase; font-size: 13px;
@@ -494,6 +498,22 @@ select {
 .income-calc.net { background: color-mix(in srgb, var(--cb-mint) 12%, var(--cb-surface-1)); }
 .income-calc.net .amt { color: var(--cb-mint); font-size: 18px; }
 .income-ytd { font-size: 10px; color: var(--cb-ink-dim); text-align: right; padding: 8px 16px 14px; }
+
+/* ---- Income Layouts B/C/D (Layout A is the .grid-table above) ---- */
+.income-line { display: flex; justify-content: space-between; padding: 6px 16px; font-size: 12.5px; border-bottom: 1px dashed var(--cb-line); }
+.income-line .lbl { color: var(--cb-ink-2); }
+.income-line .amt { font-weight: 600; font-variant-numeric: tabular-nums; }
+.income-line.sub .amt { color: #f43f5e; }
+.income-input-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 16px; }
+.income-input-grid .field { display: flex; flex-direction: column; gap: 4px; }
+.income-input-grid .field label { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #FFB37C; }
+.income-input-grid .grid-cell-input { background: color-mix(in srgb, #FFB37C 8%, transparent); border-color: color-mix(in srgb, #FFB37C 30%, transparent); }
+.income-trend { background: var(--cb-surface-2); border-radius: var(--cb-radius-md); padding: 14px 16px; margin: 16px 0; }
+.income-trend-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cb-ink-dim); }
+.income-trend-delta { font-weight: 700; }
+.income-trend-delta.up { color: var(--cb-mint); }
+.income-trend-delta.down { color: #f43f5e; }
+.income-feed-body { padding: 4px 0 16px 30px; border-top: 1px solid var(--cb-line); background: var(--cb-surface-1); }
 
 /* ---- Category manager (Settings > Preferences) ---- */
 .cat-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }

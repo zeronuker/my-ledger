@@ -223,7 +223,7 @@ function AuthenticatedApp({ uid, pwaUpdate }) {
 
         <main className="app-main">
           {tab === 'dashboard' && <Dashboard uid={uid} />}
-          {tab === 'income' && <Income uid={uid} />}
+          {tab === 'income' && <Income uid={uid} layout={settings.incomeLayout} />}
           {tab === 'investments' && <Investments uid={uid} />}
           {tab === 'expenses' && <Expenses uid={uid} />}
           {tab === 'cards' && <CreditCards uid={uid} />}

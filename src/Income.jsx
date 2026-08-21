@@ -1,124 +1,436 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useCollection } from './useCollection'
 import { useLedgerData } from './LedgerDataContext'
+import { monthNameFull, monthLabel, monthRange, currentMonth, addMonths } from './months'
+import { computeYear, computeYtd, emptyMonthInput } from './incomeCalc'
 
-function currentMonth() { return new Date().toISOString().slice(0, 7) }
-function monthLabel(monthStr) {
-  const [y, m] = monthStr.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })
+function formatMYR(n) {
+  return `RM ${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
-function addMonths(monthStr, n) {
-  const [y, m] = monthStr.split('-').map(Number)
-  const d = new Date(y, m - 1 + n, 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+function formatPlain(n) {
+  return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
-const sum = (rows) => rows.reduce((s, r) => s + Number(r.amount || 0), 0)
-const netOf = (doc) => sum(doc.earnings || []) - sum(doc.deductions || [])
 
-const EMPTY_DOC = { earnings: [], deductions: [], currency: 'MYR' }
+const NIGHTSTOP_FIELDS = [
+  { key: 'nightstopDom', label: 'Dom (RM50)' },
+  { key: 'nightstopIntl1', label: 'Intl1 (RM120)' },
+  { key: 'nightstopIntl2', label: 'Intl2 (RM180)' },
+  { key: 'nightstopIntl3', label: 'Intl3 (RM250)' },
+]
 
-export default function Income({ uid }) {
+export default function Income({ uid, layout = 'grid' }) {
   const { items, loading } = useCollection(uid, 'income', 'month')
   const ctx = useLedgerData()
-  const [month, setMonth] = useState(currentMonth())
-  const [draft, setDraft] = useState(EMPTY_DOC)
-  const loadedMonth = useRef(null)
 
-  // Load the selected month's doc into an editable draft, but only when the
-  // month actually changes — not on every Firestore snapshot — so typing
-  // isn't clobbered by our own writes echoing back.
-  useEffect(() => {
-    if (loading) return
-    if (loadedMonth.current === month) return
-    const existing = items.find((i) => i.month === month)
-    setDraft(existing ? { earnings: existing.earnings || [], deductions: existing.deductions || [], currency: existing.currency || 'MYR' } : EMPTY_DOC)
-    loadedMonth.current = month
-  }, [month, loading, items])
+  const thisMonth = currentMonth()
+  const thisYear = thisMonth.slice(0, 4)
+  const [selectedYear, setSelectedYear] = useState(thisYear)
+  const [viewMonth, setViewMonth] = useState(thisMonth)
+  const years = useMemo(() => Array.from({ length: 6 }, (_, i) => String(Number(thisYear) + i)), [thisYear])
+  const allMonths = useMemo(() => monthRange(`${selectedYear}-01`, `${selectedYear}-12`), [selectedYear])
 
-  function save(next) {
-    setDraft(next)
-    ctx.setItemFull('income', month, { month, ...next })
+  function stepViewMonth(delta) {
+    const next = addMonths(viewMonth, delta)
+    setViewMonth(next)
+    const nextYear = next.slice(0, 4)
+    if (nextYear !== selectedYear) setSelectedYear(nextYear)
   }
 
-  const year = month.slice(0, 4)
-  const ytdNet = items
-    .filter((i) => i.month.startsWith(year) && i.month <= month)
-    .reduce((s, i) => s + netOf(i), 0)
+  const docByMonth = useMemo(() => {
+    const map = new Map()
+    for (const it of items) map.set(it.month, it)
+    return map
+  }, [items])
 
-  const gross = sum(draft.earnings)
-  const totalDeductions = sum(draft.deductions)
-  const net = gross - totalDeductions
+  const inputs = allMonths.map((m) => {
+    const doc = docByMonth.get(m)
+    if (!doc) return emptyMonthInput(m)
+    return {
+      month: m, hours: doc.hours || 0, sectors: doc.sectors || 0,
+      nightstopDom: doc.nightstopDom || 0, nightstopIntl1: doc.nightstopIntl1 || 0,
+      nightstopIntl2: doc.nightstopIntl2 || 0, nightstopIntl3: doc.nightstopIntl3 || 0,
+      bonus: doc.bonus || 0, adjustment: doc.adjustment || 0,
+    }
+  })
+
+  const results = useMemo(() => computeYear(inputs), [JSON.stringify(inputs)])
+  const ytd = useMemo(() => computeYtd(results), [results])
+
+  const byMonth = useMemo(() => {
+    const map = new Map()
+    results.forEach((r) => map.set(r.month, r))
+    return map
+  }, [results])
+  const inputByMonth = useMemo(() => {
+    const map = new Map()
+    inputs.forEach((i) => map.set(i.month, i))
+    return map
+  }, [JSON.stringify(inputs)])
+  const ytdByMonth = useMemo(() => {
+    const map = new Map()
+    ytd.forEach((r) => map.set(r.month, r))
+    return map
+  }, [ytd])
+
+  // A plain shallow merge keyed by month — safe even when several fields on
+  // the same month are edited back-to-back (e.g. tabbing through the 4
+  // nightstop counts), unlike a read-current-then-full-replace approach
+  // which can lose an edit if it reads a stale snapshot mid-burst.
+  function updateMonth(m, patch) {
+    ctx.updateItem('income', m, { ...patch, month: m })
+  }
 
   return (
     <section>
       <h2 className="section-title">Income</h2>
 
-      <div className="income-head">
-        <div className="seg">
-          <button onClick={() => setMonth(addMonths(month, -1))}>&larr;</button>
-          <button className="on">{monthLabel(month)}</button>
-          <button onClick={() => setMonth(addMonths(month, 1))}>&rarr;</button>
+      <div className="year-bar">
+        <div className="year-select-wrap">
+          <select
+            id="income-year" className="year-select" aria-label="Year"
+            value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}
+          >
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
         </div>
-        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
       </div>
 
       {loading ? <p className="dim">Loading…</p> : (
-        <div className="income-stmt">
-          <IncomeSection
-            label="Earnings" rows={draft.earnings} currency={draft.currency}
-            onChange={(rows) => save({ ...draft, earnings: rows })}
-          />
-          <div className="income-calc"><span className="label">Gross salary</span><span className="amt">{draft.currency} {gross.toFixed(2)}</span></div>
-
-          <IncomeSection
-            label="Deductions" rows={draft.deductions} currency={draft.currency}
-            onChange={(rows) => save({ ...draft, deductions: rows })}
-          />
-          <div className="income-calc"><span className="label">Total deductions</span><span className="amt">{draft.currency} {totalDeductions.toFixed(2)}</span></div>
-
-          <div className="income-calc net"><span className="label">Net salary</span><span className="amt">{draft.currency} {net.toFixed(2)}</span></div>
-          <div className="income-ytd">YTD net (Jan&ndash;{monthLabel(month).split(' ')[0]}): {draft.currency} {ytdNet.toFixed(2)}</div>
-        </div>
+        <>
+          {layout === 'card' && (
+            <CardLayout
+              viewMonth={viewMonth} thisMonth={thisMonth} onStep={stepViewMonth}
+              result={byMonth.get(viewMonth)} input={inputByMonth.get(viewMonth)} ytdRow={ytdByMonth.get(viewMonth)}
+              updateMonth={updateMonth}
+            />
+          )}
+          {layout === 'dashboard' && (
+            <DashboardLayout
+              viewMonth={viewMonth} thisMonth={thisMonth} onStep={stepViewMonth}
+              allMonths={allMonths} results={results}
+              result={byMonth.get(viewMonth)} input={inputByMonth.get(viewMonth)} ytdRow={ytdByMonth.get(viewMonth)}
+              updateMonth={updateMonth}
+            />
+          )}
+          {layout === 'timeline' && (
+            <TimelineLayout
+              allMonths={allMonths} thisMonth={thisMonth} byMonth={byMonth} inputByMonth={inputByMonth}
+              updateMonth={updateMonth}
+            />
+          )}
+          {(!layout || layout === 'grid') && (
+            <GridLayout
+              allMonths={allMonths} thisMonth={thisMonth} byMonth={byMonth} inputByMonth={inputByMonth}
+              ytd={ytd} updateMonth={updateMonth}
+            />
+          )}
+        </>
       )}
     </section>
   )
 }
 
-function IncomeSection({ label, rows, currency, onChange }) {
-  const [newLabel, setNewLabel] = useState('')
+// ════════════════════════════════════════════════════════════════════
+//  LAYOUT A — GRID (default)
+// ════════════════════════════════════════════════════════════════════
+function GridLayout({ allMonths, thisMonth, byMonth, inputByMonth, ytd, updateMonth }) {
+  return (
+    <div className="grid-wrap">
+      <table className="grid-table">
+        <thead>
+          <tr>
+            <th></th>
+            {allMonths.map((m) => (
+              <th key={m} className={m === thisMonth ? 'th-current col-current' : ''}>
+                <span className="month-header-badge">{monthNameFull(m)}</span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <GroupRow label="Monthly Inputs" color="#FFB37C" span={allMonths.length + 1} />
+          <InputRow label="Flight Hours" months={allMonths} thisMonth={thisMonth} decimals={2}
+            get={(m) => inputByMonth.get(m).hours} onCommit={(m, v) => updateMonth(m, { hours: v })} />
+          <InputRow label="Sectors Flown" months={allMonths} thisMonth={thisMonth} decimals={0}
+            get={(m) => inputByMonth.get(m).sectors} onCommit={(m, v) => updateMonth(m, { sectors: v })} />
+          {NIGHTSTOP_FIELDS.map(({ key, label }) => (
+            <InputRow key={key} label={`Nightstop ${label}`} months={allMonths} thisMonth={thisMonth} decimals={0}
+              get={(m) => inputByMonth.get(m)[key]} onCommit={(m, v) => updateMonth(m, { [key]: v })} />
+          ))}
+          <InputRow label="Bonus / Renumeration" months={allMonths} thisMonth={thisMonth} decimals={2} money
+            get={(m) => inputByMonth.get(m).bonus} onCommit={(m, v) => updateMonth(m, { bonus: v })} />
 
-  function updateRow(i, patch) {
-    onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
+          <GroupRow label="Earnings" color="var(--cb-mint)" span={allMonths.length + 1} />
+          <CalcRow label="Basic Salary" months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).basic)} />
+          <CalcRow label="Meal + Nightstop Allowance" months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).productivityAllowance)} />
+          <CalcRow label="Performance Allowance" months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).performanceAllowance)} />
+          <CalcRow label="Gross Salary" bold months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).gross)} />
+
+          <GroupRow label="Employee Deductions" color="#f43f5e" span={allMonths.length + 1} />
+          <CalcRow label="EPF (11%)" months={allMonths} thisMonth={thisMonth} get={(m) => '−' + formatMYR(byMonth.get(m).epfEmployee)} />
+          <CalcRow label="SOCSO" months={allMonths} thisMonth={thisMonth} get={(m) => '−' + formatMYR(byMonth.get(m).socsoEmployee)} />
+          <CalcRow label="SKBBK" months={allMonths} thisMonth={thisMonth} get={(m) => byMonth.get(m).skbbk ? '−' + formatMYR(byMonth.get(m).skbbk) : '—'} />
+          <CalcRow label="EIS" months={allMonths} thisMonth={thisMonth} get={(m) => '−' + formatMYR(byMonth.get(m).eisEmployee)} />
+          <CalcRow label="PCB (income tax)" months={allMonths} thisMonth={thisMonth} get={(m) => '−' + formatMYR(byMonth.get(m).pcb)} />
+          <CalcRow label="Zakat Pendapatan" months={allMonths} thisMonth={thisMonth} get={(m) => '−' + formatMYR(byMonth.get(m).zakat)} />
+          <InputRow label="Adjustment" months={allMonths} thisMonth={thisMonth} decimals={2} money optional
+            get={(m) => inputByMonth.get(m).adjustment} onCommit={(m, v) => updateMonth(m, { adjustment: v })} />
+          <tr className="grid-total-row net-highlight">
+            <td>Net Salary</td>
+            {allMonths.map((m) => <td key={m} className={m === thisMonth ? 'col-current' : ''}>{formatMYR(byMonth.get(m).net)}</td>)}
+          </tr>
+
+          <GroupRow label="Employer Contributions" color="var(--cb-blue)" span={allMonths.length + 1} />
+          <CalcRow label="Employer EPF (12%)" months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).epfEmployer)} />
+          <CalcRow label="Employer SOCSO" months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).socsoEmployer)} />
+          <CalcRow label="Employer EIS" months={allMonths} thisMonth={thisMonth} get={(m) => formatMYR(byMonth.get(m).eisEmployer)} />
+
+          <GroupRow label="Year-to-Date" color="var(--cb-ink-dim)" span={allMonths.length + 1} />
+          <YtdRow label="YTD Basic" months={allMonths} ytd={ytd} field="basic" />
+          <YtdRow label="YTD Gross" months={allMonths} ytd={ytd} field="gross" />
+          <YtdRow label="YTD Employee EPF" months={allMonths} ytd={ytd} field="epfEmployee" />
+          <YtdRow label="YTD Employer EPF" months={allMonths} ytd={ytd} field="epfEmployer" />
+          <YtdRow label="YTD Employee SOCSO" months={allMonths} ytd={ytd} field="socsoEmployee" />
+          <YtdRow label="YTD Employer SOCSO" months={allMonths} ytd={ytd} field="socsoEmployer" />
+          <YtdRow label="YTD Employee EIS" months={allMonths} ytd={ytd} field="eisEmployee" />
+          <YtdRow label="YTD Employer EIS" months={allMonths} ytd={ytd} field="eisEmployer" />
+          <YtdRow label="YTD Income Tax PCB" months={allMonths} ytd={ytd} field="pcb" />
+          <YtdRow label="YTD Net" months={allMonths} ytd={ytd} field="net" bold />
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function GroupRow({ label, color, span }) {
+  return (
+    <tr className="grid-group-row cat-colored" style={{ '--cat-color': color }}>
+      <td><span className="group-name-badge">{label}</span></td>
+      <td colSpan={span - 1}></td>
+    </tr>
+  )
+}
+function CalcRow({ label, months, thisMonth, get, bold }) {
+  return (
+    <tr>
+      <td style={bold ? { fontWeight: 700 } : undefined}>{label}</td>
+      {months.map((m) => <td key={m} className={m === thisMonth ? 'col-current' : ''} style={bold ? { fontWeight: 700 } : undefined}>{get(m)}</td>)}
+    </tr>
+  )
+}
+function YtdRow({ label, months, ytd, field, bold }) {
+  const style = bold ? { fontWeight: 700, color: 'var(--cb-mint)' } : undefined
+  return (
+    <tr>
+      <td style={style}>{label}</td>
+      {months.map((m, i) => <td key={m} style={style}>{formatMYR(ytd[i]?.[field])}</td>)}
+    </tr>
+  )
+}
+function InputRow({ label, months, thisMonth, get, onCommit, decimals, money, optional }) {
+  return (
+    <tr>
+      <td>{label}</td>
+      {months.map((m) => (
+        <td key={m} className={`is-input${m === thisMonth ? ' col-current' : ''}`}>
+          <NumberCell value={get(m)} decimals={decimals} money={money} optional={optional} onCommit={(v) => onCommit(m, v)} />
+        </td>
+      ))}
+    </tr>
+  )
+}
+
+function NumberCell({ value, decimals, money, optional, onCommit }) {
+  const [text, setText] = useState(String(value ?? 0))
+  const [focused, setFocused] = useState(false)
+
+  useEffect(() => {
+    if (!focused) setText(String(value ?? 0))
+  }, [value, focused])
+
+  function commit() {
+    const n = parseFloat(text)
+    onCommit(Number.isFinite(n) ? n : 0)
+    setFocused(false)
   }
-  function removeRow(i) {
-    onChange(rows.filter((_, idx) => idx !== i))
-  }
-  function addRow(e) {
-    e.preventDefault()
-    if (!newLabel.trim()) return
-    onChange([...rows, { label: newLabel.trim(), amount: 0 }])
-    setNewLabel('')
+
+  const display = focused ? text : (money ? formatMYR(value) : String(value ?? 0))
+  const showBlank = optional && !focused && !value
+
+  return (
+    <input
+      type="text" inputMode="decimal"
+      className="grid-cell-input"
+      value={showBlank ? '' : display}
+      placeholder="—"
+      onFocus={() => { setFocused(true); setText(String(value ?? 0)) }}
+      onChange={(e) => setText(e.target.value.replace(decimals === 0 ? /[^0-9]/g : /[^0-9.-]/g, ''))}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+    />
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  Shared bits for Layouts B/C/D
+// ════════════════════════════════════════════════════════════════════
+function MonthInputFields({ input, onCommit }) {
+  return (
+    <div className="income-input-grid">
+      <div className="field"><label>Flight Hrs</label><NumberCell value={input.hours} decimals={2} onCommit={(v) => onCommit({ hours: v })} /></div>
+      <div className="field"><label>Sectors</label><NumberCell value={input.sectors} decimals={0} onCommit={(v) => onCommit({ sectors: v })} /></div>
+      <div className="field"><label>Bonus</label><NumberCell value={input.bonus} decimals={2} money onCommit={(v) => onCommit({ bonus: v })} /></div>
+      {NIGHTSTOP_FIELDS.map(({ key, label }) => (
+        <div className="field" key={key}><label>{label}</label><NumberCell value={input[key]} decimals={0} onCommit={(v) => onCommit({ [key]: v })} /></div>
+      ))}
+      <div className="field"><label>Adjustment</label><NumberCell value={input.adjustment} decimals={2} money optional onCommit={(v) => onCommit({ adjustment: v })} /></div>
+    </div>
+  )
+}
+
+function EarningsDeductions({ result }) {
+  return (
+    <>
+      <div className="income-section-label">Earnings</div>
+      <div className="income-line"><span className="lbl">Basic Salary</span><span className="amt">{formatMYR(result.basic)}</span></div>
+      <div className="income-line"><span className="lbl">Meal + Nightstop Allowance</span><span className="amt">{formatMYR(result.productivityAllowance)}</span></div>
+      <div className="income-line"><span className="lbl">Performance Allowance</span><span className="amt">{formatMYR(result.performanceAllowance)}</span></div>
+      {result.bonus > 0 && <div className="income-line"><span className="lbl">Bonus</span><span className="amt">{formatMYR(result.bonus)}</span></div>}
+      <div className="income-calc"><span className="label">Gross Pay</span><span className="amt">{formatMYR(result.gross)}</span></div>
+
+      <div className="income-section-label">Deductions</div>
+      <div className="income-line sub"><span className="lbl">Employee EPF (11%)</span><span className="amt">−{formatMYR(result.epfEmployee)}</span></div>
+      <div className="income-line sub"><span className="lbl">SOCSO</span><span className="amt">−{formatMYR(result.socsoEmployee)}</span></div>
+      {result.skbbk > 0 && <div className="income-line sub"><span className="lbl">SKBBK</span><span className="amt">−{formatMYR(result.skbbk)}</span></div>}
+      <div className="income-line sub"><span className="lbl">EIS</span><span className="amt">−{formatMYR(result.eisEmployee)}</span></div>
+      <div className="income-line sub"><span className="lbl">PCB (income tax)</span><span className="amt">−{formatMYR(result.pcb)}</span></div>
+      <div className="income-line sub"><span className="lbl">Zakat Pendapatan</span><span className="amt">−{formatMYR(result.zakat)}</span></div>
+      {result.adjustment !== 0 && <div className="income-line sub"><span className="lbl">Adjustment</span><span className="amt">{result.adjustment > 0 ? '' : '−'}{formatMYR(Math.abs(result.adjustment))}</span></div>}
+
+      <div className="income-calc net"><span className="label">Net Salary</span><span className="amt">{formatMYR(result.net)}</span></div>
+    </>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  LAYOUT B — CARD
+// ════════════════════════════════════════════════════════════════════
+function CardLayout({ viewMonth, thisMonth, onStep, result, input, ytdRow, updateMonth }) {
+  if (!result || !input) return null
+  return (
+    <div className="income-stmt" style={{ maxWidth: 560 }}>
+      <div className="income-head" style={{ padding: '14px 16px 0' }}>
+        <div className="seg">
+          <button onClick={() => onStep(-1)}>&larr;</button>
+          <button className="on">{monthLabel(viewMonth)}</button>
+          <button onClick={() => onStep(1)}>&rarr;</button>
+        </div>
+      </div>
+      <MonthInputFields input={input} onCommit={(patch) => updateMonth(viewMonth, patch)} />
+      <EarningsDeductions result={result} />
+      <div className="income-ytd">YTD net (Jan&ndash;{monthLabel(viewMonth).split(' ')[0]}): {formatMYR(ytdRow?.net)}</div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  LAYOUT C — DASHBOARD
+// ════════════════════════════════════════════════════════════════════
+function DashboardLayout({ viewMonth, thisMonth, onStep, allMonths, results, result, input, ytdRow, updateMonth }) {
+  if (!result || !input) return null
+  const totalDeductions = result.epfEmployee + result.socsoEmployee + result.skbbk + result.eisEmployee + result.pcb + result.zakat + result.adjustment
+  const idx = allMonths.indexOf(viewMonth)
+  const trendMonths = idx >= 0 ? allMonths.slice(0, idx + 1) : allMonths
+  const nets = trendMonths.map((m, i) => results[i]?.net ?? 0)
+  const spark = sparklinePoints(nets)
+  const deltaPct = nets.length > 1 && nets[0] !== 0 ? ((nets[nets.length - 1] - nets[0]) / Math.abs(nets[0])) * 100 : 0
+
+  return (
+    <div>
+      <div className="income-head">
+        <div className="seg">
+          <button onClick={() => onStep(-1)}>&larr;</button>
+          <button className="on">{monthLabel(viewMonth)}</button>
+          <button onClick={() => onStep(1)}>&rarr;</button>
+        </div>
+      </div>
+
+      <div className="stat-grid">
+        <div className="stat-tile"><div className="cb-eyebrow">Gross Pay</div><div className="stat-value">{formatMYR(result.gross)}</div></div>
+        <div className="stat-tile"><div className="cb-eyebrow">Total Deductions</div><div className="stat-value" style={{ color: '#f43f5e' }}>−{formatMYR(totalDeductions)}</div></div>
+        <div className="stat-tile" style={{ borderColor: 'var(--cb-mint)' }}><div className="cb-eyebrow">Net Salary</div><div className="stat-value" style={{ color: 'var(--cb-mint)' }}>{formatMYR(result.net)}</div></div>
+        <div className="stat-tile"><div className="cb-eyebrow">YTD Net</div><div className="stat-value">{formatMYR(ytdRow?.net)}</div></div>
+      </div>
+
+      {trendMonths.length > 1 && (
+        <div className="income-trend">
+          <div className="income-trend-head">
+            <span>Net Salary Trend</span>
+            <span className={`income-trend-delta ${deltaPct >= 0 ? 'up' : 'down'}`}>{deltaPct >= 0 ? '+' : ''}{deltaPct.toFixed(1)}% since {monthLabel(trendMonths[0]).split(' ')[0]}</span>
+          </div>
+          <svg width="100%" height="56" viewBox="0 0 560 56" preserveAspectRatio="none">
+            <line x1="6" y1="28" x2="554" y2="28" stroke="var(--cb-line-2)" strokeWidth="1" strokeDasharray="2 3" />
+            <polygon points={spark.area} fill="color-mix(in srgb, var(--cb-mint) 16%, transparent)" />
+            <polyline points={spark.line} fill="none" stroke="var(--cb-mint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx={spark.last[0]} cy={spark.last[1]} r="3.5" fill="var(--cb-mint)" />
+          </svg>
+        </div>
+      )}
+
+      <div className="income-section-label" style={{ padding: '0 0 8px' }}>This month's inputs</div>
+      <MonthInputFields input={input} onCommit={(patch) => updateMonth(viewMonth, patch)} />
+    </div>
+  )
+}
+
+function sparklinePoints(values) {
+  const W = 560, H = 56, PAD = 6
+  const min = Math.min(...values), max = Math.max(...values)
+  const pts = values.map((v, i) => {
+    const x = values.length > 1 ? (i / (values.length - 1)) * (W - PAD * 2) + PAD : W / 2
+    const y = H - PAD - ((v - min) / (max - min || 1)) * (H - PAD * 2)
+    return [x, y]
+  })
+  const line = pts.map((p) => p.join(',')).join(' ')
+  const area = `${PAD},${H} ${line} ${W - PAD},${H}`
+  return { line, area, last: pts[pts.length - 1] }
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  LAYOUT D — TIMELINE
+// ════════════════════════════════════════════════════════════════════
+function TimelineLayout({ allMonths, thisMonth, byMonth, inputByMonth, updateMonth }) {
+  const [openMonths, setOpenMonths] = useState(() => new Set([thisMonth]))
+  function toggle(m) {
+    setOpenMonths((prev) => {
+      const next = new Set(prev)
+      next.has(m) ? next.delete(m) : next.add(m)
+      return next
+    })
   }
 
   return (
-    <>
-      <div className="income-section-label">{label}</div>
-      {rows.map((r, i) => (
-        <div key={i} className="income-row">
-          <input value={r.label} onChange={(e) => updateRow(i, { label: e.target.value })}
-            style={{ flex: 1, marginRight: 8 }} />
-          <span className="cb-mono" style={{ marginRight: 4 }}>{currency}</span>
-          <input type="number" step="0.01" value={r.amount}
-            onChange={(e) => updateRow(i, { amount: Number(e.target.value) })}
-            style={{ width: 110, textAlign: 'right' }} />
-          <button className="cb-btn cb-btn--danger" onClick={() => removeRow(i)}>×</button>
-        </div>
-      ))}
-      <form onSubmit={addRow} className="income-row add-row" style={{ display: 'flex', gap: 8 }}>
-        <input placeholder={`Add ${label.toLowerCase()} row`} value={newLabel}
-          onChange={(e) => setNewLabel(e.target.value)} style={{ flex: 1 }} />
-        <button type="submit" className="cb-btn">ADD</button>
-      </form>
-    </>
+    <div className="feed-month-group">
+      {[...allMonths].reverse().map((m) => {
+        const result = byMonth.get(m)
+        const input = inputByMonth.get(m)
+        const isOpen = openMonths.has(m)
+        return (
+          <div key={m}>
+            <button className="feed-month-header" onClick={() => toggle(m)}>
+              <span className="feed-month-chevron">{isOpen ? '▾' : '▸'}</span>
+              <span className="feed-month-label">{monthNameFull(m)}{m === thisMonth ? ' · current' : ''}</span>
+              <span className="feed-month-meta">Gross {formatPlain(result.gross)} · Net {formatPlain(result.net)}</span>
+            </button>
+            {isOpen && (
+              <div className="income-feed-body">
+                <MonthInputFields input={input} onCommit={(patch) => updateMonth(m, patch)} />
+                <EarningsDeductions result={result} />
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
   )
 }

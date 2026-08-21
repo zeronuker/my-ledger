@@ -6,7 +6,7 @@ import {
 import { auth } from './firebase'
 import { clearAllCloudData } from './cloudSync'
 import { clearLocalData } from './localStore'
-import { ACCENT_PRESETS, FONT_CHOICES, DEFAULT_SETTINGS } from './theme'
+import { ACCENT_PRESETS, FONT_CHOICES, DEFAULT_SETTINGS, INCOME_LAYOUTS } from './theme'
 import { SmSectionHead, SmField, SmRow, SmSegmented, SmSlider, SmCloseIcon } from './SettingsControls.jsx'
 import { CHANGELOG } from './changelog'
 
@@ -114,7 +114,7 @@ export default function Settings({ uid, settings, update, pwaUpdate, onPreview, 
 
         <div className="sm-body">
           {tab === 'appearance' && <AppearanceTab d={draft} upd={upd} />}
-          {tab === 'preferences' && <PreferencesTab />}
+          {tab === 'preferences' && <PreferencesTab settings={settings} update={update} />}
           {tab === 'account' && <AccountTab uid={uid} onClose={handleClose} />}
           {tab === 'about' && <AboutTab pwaUpdate={pwaUpdate} />}
         </div>
@@ -221,8 +221,20 @@ function AppearanceTab({ d, upd }) {
 // ════════════════════════════════════════════════════════════════════
 //  PREFERENCES TAB
 // ════════════════════════════════════════════════════════════════════
-function PreferencesTab() {
-  return <div className="sm-tab-content" />
+function PreferencesTab({ settings, update }) {
+  const incomeLayout = settings.incomeLayout || DEFAULT_SETTINGS.incomeLayout
+  const active = INCOME_LAYOUTS.find((l) => l.value === incomeLayout)
+  return (
+    <div className="sm-tab-content">
+      <SmSectionHead title="Income Layout" hint="// how the Income tab displays your salary" />
+      <SmField label="Layout" hint={active?.hint}>
+        <SmSegmented
+          value={incomeLayout} onChange={(v) => update({ incomeLayout: v })}
+          options={INCOME_LAYOUTS.map((l) => ({ value: l.value, label: l.label }))}
+        />
+      </SmField>
+    </div>
+  )
 }
 
 // ════════════════════════════════════════════════════════════════════

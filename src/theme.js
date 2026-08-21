@@ -32,7 +32,15 @@ export const DEFAULT_SETTINGS = {
   fontFamily: 'jetbrains',
   fontSize: 14,
   density: 'default',
+  incomeLayout: 'grid',
 }
+
+export const INCOME_LAYOUTS = [
+  { value: 'grid', label: 'Grid', hint: 'All months as columns — the default' },
+  { value: 'card', label: 'Card', hint: 'One month at a time, stepped with arrows' },
+  { value: 'dashboard', label: 'Dashboard', hint: 'This month as stat tiles plus a trend line' },
+  { value: 'timeline', label: 'Timeline', hint: 'Every month as a collapsible row' },
+]
 
 function resolveAccent(settings) {
   const preset = ACCENT_PRESETS.find((p) => p.id === settings.accentPreset) || ACCENT_PRESETS[0]

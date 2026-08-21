@@ -3,6 +3,7 @@ import { useExpenseEntries } from './useExpenseEntries'
 import { useCategories } from './useCategories'
 import { DEFAULT_EXPENSE_CATEGORIES } from './categories'
 import { remainingOf } from './payments'
+import { computeYear, emptyMonthInput } from './incomeCalc'
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7)
@@ -28,10 +29,7 @@ export default function Dashboard({ uid }) {
   const monthIncomeDoc = income.find((i) => i.month === month)
   const monthCardTxns = cardTxns.filter((t) => t.date?.startsWith(month))
 
-  const netIncome = monthIncomeDoc
-    ? (monthIncomeDoc.earnings || []).reduce((s, r) => s + Number(r.amount), 0)
-      - (monthIncomeDoc.deductions || []).reduce((s, r) => s + Number(r.amount), 0)
-    : 0
+  const netIncome = monthIncomeDoc ? computeYear([{ ...emptyMonthInput(month), ...monthIncomeDoc }])[0].net : 0
   const expensesTotal = monthExpenses.reduce((s, e) => s + Number(e.amount), 0)
   const unpaidExpensesTotal = monthExpenses.filter((e) => !e.paid).reduce((s, e) => s + Number(e.amount), 0)
 
@@ -52,7 +50,7 @@ export default function Dashboard({ uid }) {
         <div className="stat-tile">
           <div className="cb-eyebrow">Net income this month</div>
           <div className="stat-value">
-            {monthIncomeDoc ? `${monthIncomeDoc.currency} ${netIncome.toFixed(2)}` : '—'}
+            {monthIncomeDoc ? `RM ${netIncome.toFixed(2)}` : '—'}
           </div>
         </div>
         <div className="stat-tile">
