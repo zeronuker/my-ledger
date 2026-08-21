@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   EmailAuthProvider, reauthenticateWithCredential, deleteUser,
-  sendPasswordResetEmail, signOut,
+  sendPasswordResetEmail,
 } from 'firebase/auth'
 import { auth } from './firebase'
 import { clearAllCloudData } from './cloudSync'
@@ -13,7 +13,7 @@ import { CHANGELOG } from './changelog'
 const SETTINGS_TABS = [
   { id: 'appearance', label: 'Appearance', hint: 'theme · accent · font' },
   { id: 'preferences', label: 'Preferences', hint: 'categories' },
-  { id: 'account', label: 'Account', hint: 'password · sign out · delete' },
+  { id: 'account', label: 'Account', hint: 'password · delete' },
   { id: 'about', label: 'About', hint: 'version · updates' },
 ]
 
@@ -275,11 +275,6 @@ function AccountTab({ uid, onClose }) {
         <button className="cb-btn-ghost" onClick={handleResetPassword} disabled={resetSent}>
           {resetSent ? 'SENT' : 'SEND RESET EMAIL'}
         </button>
-      </SmField>
-
-      <SmSectionHead title="Session" hint="// this device" />
-      <SmField label="Sign out" hint="Ends your session on this device.">
-        <button className="cb-btn-ghost" onClick={() => { signOut(auth); onClose() }}>SIGN OUT</button>
       </SmField>
 
       <SmSectionHead title="Account" hint="// danger zone" />

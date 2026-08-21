@@ -111,11 +111,11 @@ export default function Expenses({ uid }) {
                       onClick={hideable ? () => toggleMonth(m) : undefined}
                       title={hideable ? 'Hide this month' : undefined}
                     >
-                      {monthNameFull(m)}
+                      <span className="month-header-badge">{monthNameFull(m)}</span>
                     </th>
                   )
                 })}
-                <th className="col-total">Total</th>
+                <th className="col-total"><span className="month-header-badge">Total</span></th>
               </tr>
             </thead>
             <tbody>
