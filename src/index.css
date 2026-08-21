@@ -379,13 +379,15 @@ select {
 .grid-group-row td {
   background: var(--cb-surface-3); font-weight: 700; text-align: left;
   letter-spacing: 0.08em; text-transform: uppercase; font-size: 13px;
+  white-space: normal;
 }
 .grid-group-row.cat-colored td {
   color: var(--cat-color);
   background: color-mix(in srgb, var(--cat-color) 14%, var(--cb-surface-3));
 }
 .group-name-badge {
-  display: inline-block; border: 1.5px solid var(--cat-color); border-radius: 4px; padding: 2px 8px;
+  display: inline-block; max-width: 100%; border: 1.5px solid var(--cat-color); border-radius: 4px; padding: 2px 8px;
+  white-space: normal; overflow-wrap: break-word;
 }
 .month-header-badge {
   display: inline-block; border: 1.5px solid currentColor; border-radius: 4px; padding: 2px 8px;
