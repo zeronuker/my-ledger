@@ -145,7 +145,7 @@ export default function Income({ uid, layout = 'grid' }) {
 //  striped sub-rows (reset per section), hideable past months, and
 //  wrap-then-shrink row labels.
 // ════════════════════════════════════════════════════════════════════
-const GRID_ROWS = [
+const MAIN_GRID_ROWS = [
   { type: 'group', label: 'Monthly Inputs', color: '#FFB37C' },
   { type: 'input', label: 'Flight Hours', field: 'hours', decimals: 2 },
   { type: 'input', label: 'Sectors Flown', field: 'sectors', decimals: 0 },
@@ -170,7 +170,12 @@ const GRID_ROWS = [
   { type: 'calc', label: 'Zakat Pendapatan', field: 'zakat', deduction: true },
   { type: 'input', label: 'Adjustment', field: 'adjustment', decimals: 2, money: true, optional: true },
   { type: 'total', label: 'Net Salary', field: 'net' },
+]
 
+// Kept in a separate table from MAIN_GRID_ROWS — employer money and YTD
+// running totals aren't part of what the employee actually receives that
+// month, so mixing them into the same grid as take-home pay was misleading.
+const SECONDARY_GRID_ROWS = [
   { type: 'group', label: 'Employer Contributions', color: 'var(--cb-blue)' },
   { type: 'calc', label: 'Employer EPF (12%)', field: 'epfEmployer' },
   { type: 'calc', label: 'Employer SOCSO', field: 'socsoEmployer' },
@@ -190,6 +195,17 @@ const GRID_ROWS = [
 ]
 
 function GridLayout({ allMonths, thisMonth, isCurrentYear, hiddenSet, toggleMonth, byMonth, inputByMonth, ytd, updateMonth }) {
+  const tableProps = { allMonths, thisMonth, isCurrentYear, hiddenSet, toggleMonth, byMonth, inputByMonth, ytd, updateMonth }
+  return (
+    <>
+      <GridTable rows={MAIN_GRID_ROWS} {...tableProps} />
+      <div style={{ height: 20 }} />
+      <GridTable rows={SECONDARY_GRID_ROWS} {...tableProps} />
+    </>
+  )
+}
+
+function GridTable({ rows, allMonths, thisMonth, isCurrentYear, hiddenSet, toggleMonth, byMonth, inputByMonth, ytd, updateMonth }) {
   let stripeIdx = 0
   return (
     <div className="grid-wrap">
@@ -220,7 +236,7 @@ function GridLayout({ allMonths, thisMonth, isCurrentYear, hiddenSet, toggleMont
           </tr>
         </thead>
         <tbody>
-          {GRID_ROWS.map((row, i) => {
+          {rows.map((row, i) => {
             if (row.type === 'group') {
               stripeIdx = 0
               return <GroupRow key={i} label={row.label} color={row.color} span={allMonths.length + 1} />
