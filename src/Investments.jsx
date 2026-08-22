@@ -511,7 +511,7 @@ function GoldLedgerTable({ goldSummary, snapshot, addGoldItem, updateGoldItem, r
               <th><span className="month-header-badge">Price/Gram</span></th>
               <th><span className="month-header-badge">Purchased</span></th>
               <th><span className="month-header-badge">Current</span></th>
-              <th></th>
+              <th style={{ width: 44, background: 'transparent', border: 'none' }}></th>
             </tr>
           </thead>
           <tbody>
@@ -535,7 +535,7 @@ function GoldLedgerTable({ goldSummary, snapshot, addGoldItem, updateGoldItem, r
                 <td className="is-input"><NumberCell value={item.pricePerGram} decimals={2} money onCommit={(v) => updateGoldItem(item.id, { pricePerGram: v })} /></td>
                 <td>{formatMYR(item.purchasedPrice)}</td>
                 <td>{formatMYR(item.currentPrice)}</td>
-                <td><button className="cb-btn-ghost" onClick={() => removeGoldItem(item.id)} aria-label="Remove item" style={{ color: '#ef4444', borderColor: '#ef4444' }}>✕</button></td>
+                <td style={{ width: 44, padding: '4px 6px' }}><button className="cb-btn-ghost" onClick={() => removeGoldItem(item.id)} aria-label="Remove item" style={{ color: '#ef4444', borderColor: '#ef4444', padding: '3px 6px' }}>✕</button></td>
               </tr>
             ))}
             <tr className="grid-total-row net-highlight">
@@ -545,7 +545,7 @@ function GoldLedgerTable({ goldSummary, snapshot, addGoldItem, updateGoldItem, r
               <td style={{ fontWeight: 700 }}>{formatMYR(goldSummary.avgPricePerGram)}</td>
               <td style={{ fontWeight: 700 }}>{formatMYR(goldSummary.totalPurchased)}</td>
               <td style={{ fontWeight: 700, color: 'var(--cb-mint)' }}>{formatMYR(goldSummary.totalCurrent)}</td>
-              <td></td>
+              <td style={{ width: 44 }}></td>
             </tr>
             <tr>
               <td colSpan={7} style={{ textAlign: 'right', fontWeight: 700 }}>{formatPct(goldSummary.gainPct)} gain</td>
