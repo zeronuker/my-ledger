@@ -454,8 +454,17 @@ function GoldPriceTable({ snapshot, updateSnapshot, updateGoldPrice }) {
     <div className="grid-wrap">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
         <span className="group-name-badge">Gold Price</span>
-        <button className="cb-btn-ghost" onClick={refresh} disabled={fetching}>
-          {fetching ? 'FETCHING…' : 'REFRESH FROM PUBLIC GOLD'}
+        <button
+          className="icon-btn" onClick={refresh} disabled={fetching}
+          title={fetching ? 'Fetching…' : 'Refresh from Public Gold'} aria-label="Refresh gold price"
+        >
+          <svg
+            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            style={{ animation: fetching ? 'cb-sync-spin 1s linear infinite' : 'none' }}
+          >
+            <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+          </svg>
         </button>
         {fetchedAt && <span className="dim" style={{ fontSize: 12 }}>Last fetched {new Date(fetchedAt).toLocaleString()}</span>}
         {error && <span style={{ fontSize: 12, color: '#f43f5e' }}>{error} — edit manually below</span>}
@@ -492,76 +501,55 @@ function GoldLedgerTable({ goldSummary, snapshot, addGoldItem, updateGoldItem, r
         <span className="group-name-badge">Physical Gold Ledger</span>
         <button className="cb-btn-ghost" onClick={addGoldItem}>+ ADD ITEM</button>
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <div className="grid-wrap">
-          <table className="grid-table grid-table--narrow">
-            <thead>
-              <tr>
-                <th><span className="month-header-badge">Item</span></th>
-                <th><span className="month-header-badge">Purity</span></th>
-                <th><span className="month-header-badge">Weight (g)</span></th>
-                <th><span className="month-header-badge">Price/Gram</span></th>
-                <th><span className="month-header-badge">Purchased</span></th>
-                <th><span className="month-header-badge">Current</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {goldSummary.items.map((item, i) => (
-                <tr key={item.id} className={i % 2 === 0 ? 'row-even' : 'row-odd'}>
-                  <td className="is-input">
-                    <input
-                      type="text" className="grid-cell-input" value={item.label || ''}
-                      onChange={(e) => updateGoldItem(item.id, { label: e.target.value })}
-                    />
-                  </td>
-                  <td className="is-input">
-                    <select
-                      className="grid-cell-input" value={item.purity || 999}
-                      onChange={(e) => updateGoldItem(item.id, { purity: Number(e.target.value) })}
-                    >
-                      {GOLD_PURITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </td>
-                  <td className="is-input"><NumberCell value={item.weightGrams} decimals={2} onCommit={(v) => updateGoldItem(item.id, { weightGrams: v })} /></td>
-                  <td className="is-input"><NumberCell value={item.pricePerGram} decimals={2} money onCommit={(v) => updateGoldItem(item.id, { pricePerGram: v })} /></td>
-                  <td>{formatMYR(item.purchasedPrice)}</td>
-                  <td>{formatMYR(item.currentPrice)}</td>
-                </tr>
-              ))}
-              <tr className="grid-total-row net-highlight">
-                <td style={{ fontWeight: 700 }}>Total</td>
-                <td></td>
-                <td style={{ fontWeight: 700 }}>{goldSummary.totalWeight.toFixed(2)}g</td>
-                <td style={{ fontWeight: 700 }}>{formatMYR(goldSummary.avgPricePerGram)}</td>
-                <td style={{ fontWeight: 700 }}>{formatMYR(goldSummary.totalPurchased)}</td>
-                <td style={{ fontWeight: 700, color: 'var(--cb-mint)' }}>{formatMYR(goldSummary.totalCurrent)}</td>
-              </tr>
-              <tr>
-                <td colSpan={6} style={{ textAlign: 'right', fontWeight: 700 }}>{formatPct(goldSummary.gainPct)} gain</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* Delete buttons rendered as their own table, outside the ledger's
-            bordered box — a second `.grid-table` with matching row-height
-            CSS so it lines up with the table on the left without needing
-            per-row pixel measurements. */}
+      <div className="grid-wrap">
         <table className="grid-table grid-table--narrow">
-          <thead><tr><th style={{ background: 'transparent', border: 'none' }}><span className="month-header-badge" style={{ visibility: 'hidden' }}>Item</span></th></tr></thead>
+          <thead>
+            <tr>
+              <th><span className="month-header-badge">Item</span></th>
+              <th><span className="month-header-badge">Purity</span></th>
+              <th><span className="month-header-badge">Weight (g)</span></th>
+              <th><span className="month-header-badge">Price/Gram</span></th>
+              <th><span className="month-header-badge">Purchased</span></th>
+              <th><span className="month-header-badge">Current</span></th>
+              <th></th>
+            </tr>
+          </thead>
           <tbody>
             {goldSummary.items.map((item, i) => (
               <tr key={item.id} className={i % 2 === 0 ? 'row-even' : 'row-odd'}>
-                <td style={{ border: 'none', background: 'transparent' }}>
-                  <button
-                    className="cb-btn-ghost" onClick={() => removeGoldItem(item.id)} aria-label="Remove item"
-                    style={{ color: '#ef4444', borderColor: '#ef4444' }}
-                  >✕</button>
+                <td className="is-input">
+                  <input
+                    type="text" className="grid-cell-input" value={item.label || ''}
+                    onChange={(e) => updateGoldItem(item.id, { label: e.target.value })}
+                  />
                 </td>
+                <td className="is-input">
+                  <select
+                    className="grid-cell-input" value={item.purity || 999}
+                    onChange={(e) => updateGoldItem(item.id, { purity: Number(e.target.value) })}
+                  >
+                    {GOLD_PURITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </td>
+                <td className="is-input"><NumberCell value={item.weightGrams} decimals={2} onCommit={(v) => updateGoldItem(item.id, { weightGrams: v })} /></td>
+                <td className="is-input"><NumberCell value={item.pricePerGram} decimals={2} money onCommit={(v) => updateGoldItem(item.id, { pricePerGram: v })} /></td>
+                <td>{formatMYR(item.purchasedPrice)}</td>
+                <td>{formatMYR(item.currentPrice)}</td>
+                <td><button className="cb-btn-ghost" onClick={() => removeGoldItem(item.id)} aria-label="Remove item" style={{ color: '#ef4444', borderColor: '#ef4444' }}>✕</button></td>
               </tr>
             ))}
-            <tr className="grid-total-row net-highlight"><td style={{ border: 'none', background: 'transparent', visibility: 'hidden' }}>0</td></tr>
-            <tr><td style={{ border: 'none', background: 'transparent', visibility: 'hidden' }}>0</td></tr>
+            <tr className="grid-total-row net-highlight">
+              <td style={{ fontWeight: 700 }}>Total</td>
+              <td></td>
+              <td style={{ fontWeight: 700 }}>{goldSummary.totalWeight.toFixed(2)}g</td>
+              <td style={{ fontWeight: 700 }}>{formatMYR(goldSummary.avgPricePerGram)}</td>
+              <td style={{ fontWeight: 700 }}>{formatMYR(goldSummary.totalPurchased)}</td>
+              <td style={{ fontWeight: 700, color: 'var(--cb-mint)' }}>{formatMYR(goldSummary.totalCurrent)}</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td colSpan={7} style={{ textAlign: 'right', fontWeight: 700 }}>{formatPct(goldSummary.gainPct)} gain</td>
+            </tr>
           </tbody>
         </table>
       </div>
