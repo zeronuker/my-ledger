@@ -191,6 +191,20 @@ export function LedgerDataProvider({ uid, children }) {
     mutateCollection(name, (coll) => ({ ...coll, [id]: itemData }))
   }, [mutateCollection])
 
+  // Bulk variant of addItem — one setData/localStorage write for the whole
+  // batch instead of one per item, which matters once a batch reaches into
+  // the hundreds (e.g. a CSV import) since every write serializes the
+  // entire local snapshot.
+  const addManyItems = useCallback((name, itemsDataArray) => {
+    const ids = itemsDataArray.map(() => crypto.randomUUID())
+    mutateCollection(name, (coll) => {
+      const next = { ...coll }
+      itemsDataArray.forEach((data, i) => { next[ids[i]] = data })
+      return next
+    })
+    return ids
+  }, [mutateCollection])
+
   const removeItem = useCallback((name, id) => {
     mutateCollection(name, (coll) => {
       const next = { ...coll }
@@ -285,6 +299,7 @@ export function LedgerDataProvider({ uid, children }) {
     resolveKeepLocal,
     resolveKeepCloud,
     addItem,
+    addManyItems,
     updateItem,
     setItemFull,
     removeItem,

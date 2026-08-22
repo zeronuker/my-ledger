@@ -34,6 +34,8 @@ export const DEFAULT_SETTINGS = {
   density: 'default',
   incomeLayout: 'grid',
   expensesLayout: 'grid',
+  investmentsLayout: 'grid',
+  creditCardsLayout: 'feed',
 }
 
 export const INCOME_LAYOUTS = [
@@ -46,6 +48,18 @@ export const INCOME_LAYOUTS = [
 export const EXPENSES_LAYOUTS = [
   { value: 'grid', label: 'Grid', hint: 'All months as columns — the default' },
   { value: 'month', label: 'Month', hint: 'One month at a time, stat tiles plus category totals' },
+]
+
+export const INVESTMENTS_LAYOUTS = [
+  { value: 'grid', label: 'Grid', hint: 'Sheet-style tables — the default' },
+  { value: 'dashboard', label: 'Dashboard', hint: 'Stat tiles plus a breakdown chart' },
+  { value: 'cards', label: 'Cards', hint: 'One card per instrument type' },
+  { value: 'household', label: 'Household', hint: 'Grouped by family member' },
+]
+
+export const CREDIT_CARDS_LAYOUTS = [
+  { value: 'feed', label: 'Feed', hint: 'Stat tiles plus month-grouped transaction cards — the default' },
+  { value: 'grid', label: 'Grid', hint: 'Dense sheet-style table' },
 ]
 
 function resolveAccent(settings) {

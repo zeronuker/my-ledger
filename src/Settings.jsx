@@ -6,7 +6,7 @@ import {
 import { auth } from './firebase'
 import { clearAllCloudData } from './cloudSync'
 import { clearLocalData } from './localStore'
-import { ACCENT_PRESETS, FONT_CHOICES, DEFAULT_SETTINGS, INCOME_LAYOUTS, EXPENSES_LAYOUTS } from './theme'
+import { ACCENT_PRESETS, FONT_CHOICES, DEFAULT_SETTINGS, INCOME_LAYOUTS, EXPENSES_LAYOUTS, INVESTMENTS_LAYOUTS, CREDIT_CARDS_LAYOUTS } from './theme'
 import { SmSectionHead, SmField, SmRow, SmSegmented, SmSlider, SmCloseIcon } from './SettingsControls.jsx'
 import { CHANGELOG } from './changelog'
 
@@ -232,6 +232,10 @@ function PreferencesTab({ settings, update }) {
   const activeIncome = INCOME_LAYOUTS.find((l) => l.value === incomeLayout)
   const expensesLayout = settings.expensesLayout || DEFAULT_SETTINGS.expensesLayout
   const activeExpenses = EXPENSES_LAYOUTS.find((l) => l.value === expensesLayout)
+  const investmentsLayout = settings.investmentsLayout || DEFAULT_SETTINGS.investmentsLayout
+  const activeInvestments = INVESTMENTS_LAYOUTS.find((l) => l.value === investmentsLayout)
+  const creditCardsLayout = settings.creditCardsLayout || DEFAULT_SETTINGS.creditCardsLayout
+  const activeCreditCards = CREDIT_CARDS_LAYOUTS.find((l) => l.value === creditCardsLayout)
   return (
     <div className="sm-tab-content">
       <SmSectionHead title="Income Layout" hint="// how the Income tab displays your salary" />
@@ -247,6 +251,22 @@ function PreferencesTab({ settings, update }) {
         <SmSegmented
           value={expensesLayout} onChange={(v) => update({ expensesLayout: v })}
           options={EXPENSES_LAYOUTS.map((l) => ({ value: l.value, label: l.label }))}
+        />
+      </SmField>
+
+      <SmSectionHead title="Investments Layout" hint="// how the Investments tab displays your savings" />
+      <SmField label="Layout" hint={activeInvestments?.hint}>
+        <SmSegmented
+          value={investmentsLayout} onChange={(v) => update({ investmentsLayout: v })}
+          options={INVESTMENTS_LAYOUTS.map((l) => ({ value: l.value, label: l.label }))}
+        />
+      </SmField>
+
+      <SmSectionHead title="Credit Cards Layout" hint="// how the Credit Cards tab displays your transactions" />
+      <SmField label="Layout" hint={activeCreditCards?.hint}>
+        <SmSegmented
+          value={creditCardsLayout} onChange={(v) => update({ creditCardsLayout: v })}
+          options={CREDIT_CARDS_LAYOUTS.map((l) => ({ value: l.value, label: l.label }))}
         />
       </SmField>
     </div>

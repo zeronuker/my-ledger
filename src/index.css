@@ -243,7 +243,7 @@ body {
 
 /* ---- Manage Categories modal — sm- chrome (see "Settings modal" block
    below), with its own cmm- classes for the Add form and Arrange list. ---- */
-.cmm-modal { width: 480px; }
+.sm-modal.cmm-modal { width: 400px; }
 .cmm-tabs { grid-template-columns: repeat(2, 1fr); }
 .cmm-inline-form { display: flex; gap: 8px; margin-top: 12px; }
 .cmm-inline-form .sm-input { flex: 1; }

@@ -9,4 +9,5 @@ export const COLLECTION_NAMES = [
   'cards',
   'cardTransactions',
   'income',
+  'investments',
 ]
